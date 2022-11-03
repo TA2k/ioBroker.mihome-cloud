@@ -155,8 +155,14 @@ class MihomeCloud extends utils.Adapter {
         this.setState("info.connection", true, true);
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
-        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie(
+          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
+        await this.cookieJar.setCookie(
+          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
       })
       .catch((error) => {
         this.log.error(error);
@@ -285,7 +291,12 @@ class MihomeCloud extends utils.Adapter {
         desc: "Status of the device",
         props: {
           accessKey: "IOS00026747c5acafc2",
-          params: { did: "$DID", siid: 7, in: ["eyJpZCI6MCwibWV0aG9kIjoiZ2V0X3Byb3AiLCJwYXJhbXMiOlsiZ2V0X3N0YXR1cyJdfQ=="], aiid: 1 },
+          params: {
+            did: "$DID",
+            siid: 7,
+            in: ["eyJpZCI6MCwibWV0aG9kIjoiZ2V0X3Byb3AiLCJwYXJhbXMiOlsiZ2V0X3N0YXR1cyJdfQ=="],
+            aiid: 1,
+          },
         },
       },
     ];
@@ -436,7 +447,7 @@ class MihomeCloud extends utils.Adapter {
       if (!state.ack) {
         const deviceId = id.split(".")[2];
         let command = id.split(".")[4];
-        const type = command.split("-")[1];
+        // const type = command.split("-")[1];
         command = command.split("-")[0];
 
         if (id.split(".")[4] === "Refresh") {
