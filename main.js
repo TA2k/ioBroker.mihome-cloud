@@ -65,7 +65,7 @@ class MihomeCloud extends utils.Adapter {
 
     this.log.info("Login to MiHome Cloud");
     await this.login();
-    if (this.session.token) {
+    if (this.session.ssecurity) {
       await this.getDeviceList();
       await this.updateDevices();
       this.updateInterval = setInterval(async () => {
@@ -100,7 +100,7 @@ class MihomeCloud extends utils.Adapter {
         this.log.error(error);
         error.response && this.log.error(JSON.stringify(error.response.data));
       });
-    if (!firstStep.sign) {
+    if (!firstStep._sign) {
       this.log.error("No sign in first step");
       return;
     }
@@ -119,7 +119,7 @@ class MihomeCloud extends utils.Adapter {
         hash: crypto.createHash("md5").update(this.config.password).digest("hex").toUpperCase(),
         sid: "xiaomiio",
         callback: "https://sts.api.io.mi.com/sts",
-        _sign: firstStep.sign,
+        _sign: firstStep._sign,
         qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
         user: this.config.username,
       }),
@@ -137,7 +137,7 @@ class MihomeCloud extends utils.Adapter {
         error.response && this.log.error(JSON.stringify(error.response.data));
       });
 
-    if (!this.session.ok) {
+    if (!this.session.ssecurity) {
       this.log.error("Login failed");
       return;
     }
@@ -150,9 +150,19 @@ class MihomeCloud extends utils.Adapter {
         "Accept-Language": "de-de",
       },
     })
-      .then((res) => {
+      .then(async (res) => {
         this.log.debug(JSON.stringify(res.data));
         this.setState("info.connection", true, true);
+        const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
+
+        await this.cookieJar.setCookie(
+          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
+        await this.cookieJar.setCookie(
+          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
       })
       .catch((error) => {
         this.log.error(error);
@@ -164,6 +174,7 @@ class MihomeCloud extends utils.Adapter {
     const path = "/v2/home/device_list_page";
     const data = { get_split_device: true, support_smart_home: true, accessKey: "IOS00026747c5acafc2", limit: 300 };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
     await this.requestClient({
       method: "post",
       url: "https://" + this.region + ".api.io.mi.com/app" + path,
@@ -188,16 +199,17 @@ class MihomeCloud extends utils.Adapter {
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
+        ssecurity: this.session.ssecurity,
       }),
     })
       .then(async (res) => {
         try {
-          res.data = JSON.parse(rc4.decode(res.data));
+          res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
         } catch (error) {
           this.log.error(error);
           return;
         }
-        if (res.data.result !== 0) {
+        if (res.data.code !== 0) {
           this.log.error("Error getting device list");
           this.log.error(JSON.stringify(res.data));
           return;
@@ -255,10 +267,10 @@ class MihomeCloud extends utils.Adapter {
   createBody(path, data) {
     const nonce = this.generateNonce();
     const signedNonce = this.signedNonce(this.session.ssecurity, nonce);
-    let params = ["POST", path, `data=${data}`, signedNonce];
+    let params = ["POST", path, `data=${JSON.stringify(data)}`, signedNonce];
     const rc4 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
     const rc4_hash = crypto.createHash("sha1").update(params.join("&"), "utf8").digest("base64");
-    const data_rc = rc4.encode(data);
+    const data_rc = rc4.encode(JSON.stringify(data));
     const rc4_hash_rc = rc4.encode(rc4_hash);
     params = ["POST", path, `data=${data_rc}`, `rc4_hash__=${rc4_hash_rc}`, signedNonce];
     const signature = crypto.createHash("sha1").update(params.join("&"), "utf8").digest("base64");
@@ -267,6 +279,12 @@ class MihomeCloud extends utils.Adapter {
 
   async updateDevices() {
     const statusArray = [
+      {
+        url: "/v2/device/batchgetdatas",
+        path: "status",
+        desc: "Status of the device",
+        props: ["event.status"],
+      },
       {
         url: "/v2/device/batchgetdatas",
         path: "status",
@@ -307,21 +325,32 @@ class MihomeCloud extends utils.Adapter {
         })
           .then(async (res) => {
             try {
-              res.data = JSON.parse(rc4.decode(res.data));
+              res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
             } catch (error) {
               this.log.error(error);
               return;
             }
-            if (res.data.result !== 0) {
-              this.log.error("Error getting device statis");
+            if (res.data.code !== 0) {
+              this.log.error("Error getting device status");
               this.log.error(JSON.stringify(res.data));
               return;
             }
             this.log.debug(JSON.stringify(res.data));
+            let resultData = res.data.result[device.did]["event.status"];
+            if (!resultData) {
+              this.log.info(`No data for ${device.did} ${device.name}`);
+              return;
+            }
+            try {
+              resultData = JSON.parse(resultData.value)[0];
+            } catch (error) {
+              this.log.error(error);
+              return;
+            }
             const forceIndex = true;
             const preferedArrayName = null;
 
-            this.json2iob.parse(device.did + "." + element.path, data, {
+            this.json2iob.parse(device.did + "." + element.path, resultData, {
               forceIndex: forceIndex,
               write: true,
               preferedArrayName: preferedArrayName,
