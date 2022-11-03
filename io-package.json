@@ -1,0 +1,104 @@
+{
+    "common": {
+        "name": "mihome-cloud",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "Mi Home Cloud",
+        "titleLang": {
+            "en": "Mi Home Cloud",
+            "de": "Mi Home-Cloud",
+            "ru": "Ми Домашнее Облако",
+            "pt": "Mi Home Cloud",
+            "nl": "Mi Home Cloud",
+            "fr": "Mi Maison Cloud",
+            "it": "La mia nuvola domestica",
+            "es": "Mi hogar en la nube",
+            "pl": "Chmura domowa Mi",
+            "zh-cn": "米家云"
+        },
+        "desc": {
+            "en": "Adapter for Mi Home Cloud devices",
+            "de": "Adapter für Mi Home Cloud-Geräte",
+            "ru": "Адаптер для устройств Mi Home Cloud",
+            "pt": "Adaptador para dispositivos Mi Home Cloud",
+            "nl": "Adapter voor Mi Home Cloud-apparaten",
+            "fr": "Adaptateur pour appareils Mi Home Cloud",
+            "it": "Adattatore per dispositivi Mi Home Cloud",
+            "es": "Adaptador para dispositivos Mi Home Cloud",
+            "pl": "Adapter do urządzeń Mi Home Cloud",
+            "zh-cn": "小米家庭云设备适配器"
+        },
+        "authors": ["TA2k <tombox2020@gmail.com>"],
+        "keywords": ["MiHome", "Cloud"],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "main.js",
+        "icon": "mihome-cloud.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.mihome-cloud/main/admin/mihome-cloud.png",
+        "readme": "https://github.com/TA2k/ioBroker.mihome-cloud/blob/main/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "household",
+        "compact": true,
+        "connectionType": "cloud",
+        "dataSource": "poll",
+        "adminUI": {
+            "config": "json"
+        },
+        "dependencies": [
+            {
+                "js-controller": ">=3.3.22"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=5.2.28"
+            }
+        ]
+    },
+    "encryptedNative": ["password"],
+    "protectedNative": ["password"],
+    "native": {
+        "username": "",
+        "password": "",
+        "interval": 10
+    },
+    "objects": [],
+    "instanceObjects": [
+        {
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device or service connected",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
+    ]
+}
