@@ -155,14 +155,8 @@ class MihomeCloud extends utils.Adapter {
         this.setState("info.connection", true, true);
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie(
-          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
-        await this.cookieJar.setCookie(
-          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
+        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
       })
       .catch((error) => {
         this.log.error(error);
@@ -283,19 +277,22 @@ class MihomeCloud extends utils.Adapter {
         url: "/v2/device/batchgetdatas",
         path: "status",
         desc: "Status of the device",
-        props: ["event.status"],
+        props: [{ did: "$DID", props: ["event.status"], accessKey: "IOS00026747c5acafc2" }],
       },
       {
-        url: "/v2/device/batchgetdatas",
+        url: "/miotspec/action",
         path: "status",
         desc: "Status of the device",
-        props: ["event.status"],
+        props: {
+          accessKey: "IOS00026747c5acafc2",
+          params: { did: "$DID", siid: 7, in: ["eyJpZCI6MCwibWV0aG9kIjoiZ2V0X3Byb3AiLCJwYXJhbXMiOlsiZ2V0X3N0YXR1cyJdfQ=="], aiid: 1 },
+        },
       },
     ];
 
     for (const element of statusArray) {
       for (const device of this.deviceArray) {
-        const data = [{ did: device.did, props: element.props, accessKey: "IOS00026747c5acafc2" }];
+        const data = JSON.parse(JSON.stringify(element.props).replace("$DID", device.did));
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(element.url, data);
         await this.requestClient({
           method: "post",
@@ -336,17 +333,24 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             this.log.debug(JSON.stringify(res.data));
-            let resultData = res.data.result[device.did]["event.status"];
-            if (!resultData) {
-              this.log.info(`No data for ${device.did} ${device.name}`);
-              return;
-            }
-            try {
+            let resultData = res.data.result[device.did];
+            if (element.url === "/v2/device/batchgetdatas") {
+              resultData = res.data.result[device.did]["event.status"];
+              if (!resultData) {
+                this.log.debug(`No data for ${device.did} ${device.name}`);
+                return;
+              }
               resultData = JSON.parse(resultData.value)[0];
-            } catch (error) {
-              this.log.error(error);
+            }
+            if (res.data.result.out) {
+              const base64String = res.data.result.out[0];
+              resultData = JSON.parse(Buffer.from(base64String, "base64").toString("utf8"));
+              resultData = resultData.result[0];
+            }
+            if (!resultData) {
               return;
             }
+
             const forceIndex = true;
             const preferedArrayName = null;
 
