@@ -30,6 +30,22 @@ class MihomeCloud extends utils.Adapter {
     this.deviceArray = [];
     this.region = "de";
     this.deviceId = this.randomString(40);
+    this.header = {
+      "miot-encrypt-algorithm": "ENCRYPT-RC4",
+      "content-type": "application/x-www-form-urlencoded",
+      accept: "*/*",
+      "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
+      "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
+      "operate-common":
+        "_region=" +
+        this.region +
+        "&_language=" +
+        this.region +
+        "_deviceId=" +
+        this.deviceId +
+        "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
+      "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
+    };
     this.json2iob = new Json2iob(this);
     this.cookieJar = new tough.CookieJar();
     this.requestClient = axios.create({
@@ -68,6 +84,9 @@ class MihomeCloud extends utils.Adapter {
     if (this.session.ssecurity) {
       await this.getDeviceList();
       await this.updateDevices();
+      await this.listLocal();
+      await this.getHome();
+      await this.getActions();
       this.updateInterval = setInterval(async () => {
         await this.updateDevices();
       }, this.config.interval * 60 * 1000);
@@ -155,14 +174,8 @@ class MihomeCloud extends utils.Adapter {
         this.setState("info.connection", true, true);
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie(
-          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
-        await this.cookieJar.setCookie(
-          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
+        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
       })
       .catch((error) => {
         this.log.error(error);
@@ -178,28 +191,12 @@ class MihomeCloud extends utils.Adapter {
     await this.requestClient({
       method: "post",
       url: "https://" + this.region + ".api.io.mi.com/app" + path,
-      headers: {
-        "miot-encrypt-algorithm": "ENCRYPT-RC4",
-        "content-type": "application/x-www-form-urlencoded",
-        accept: "*/*",
-        "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
-        "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
-        "operate-common":
-          "_region=" +
-          this.region +
-          "&_language=" +
-          this.region +
-          "_deviceId=" +
-          this.deviceId +
-          "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
-        "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
-      },
+      headers: this.header,
       data: qs.stringify({
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-        ssecurity: this.session.ssecurity,
       }),
     })
       .then(async (res) => {
@@ -263,6 +260,129 @@ class MihomeCloud extends utils.Adapter {
         error.response && this.log.error(JSON.stringify(error.response.data));
       });
   }
+  async listLocal() {
+    const path = "/v2/home/local_device_list";
+    const data = { accessKey: "IOS00026747c5acafc2" };
+    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+    await this.requestClient({
+      method: "post",
+      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      headers: this.header,
+      data: qs.stringify({
+        _nonce: nonce,
+        data: data_rc,
+        rc4_hash__: rc4_hash_rc,
+        signature: signature,
+      }),
+    })
+      .then(async (res) => {
+        try {
+          this.log.info(rc4.decode(res.data).replace("&&&START&&&", ""));
+        } catch (error) {
+          this.log.error(error);
+          return;
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async getHome() {
+    const path = "/homeroom/gethome";
+    const data = { fetch_share: true, accessKey: "IOS00026747c5acafc2", app_ver: 7, limit: 300 };
+    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+    await this.requestClient({
+      method: "post",
+      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      headers: this.header,
+      data: qs.stringify({
+        _nonce: nonce,
+        data: data_rc,
+        rc4_hash__: rc4_hash_rc,
+        signature: signature,
+      }),
+    })
+      .then(async (res) => {
+        try {
+          const result = rc4.decode(res.data).replace("&&&START&&&", "");
+          this.log.info(result);
+          this.home = JSON.parse(result).result;
+        } catch (error) {
+          this.log.error(error);
+          return;
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async gerProducts() {
+    const path = "/v2/plugin/get_config_info_new";
+    const data = { accessKey: "IOS00026747c5acafc2" };
+    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+    await this.requestClient({
+      method: "post",
+      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      headers: this.header,
+      data: qs.stringify({
+        _nonce: nonce,
+        data: data_rc,
+        rc4_hash__: rc4_hash_rc,
+        signature: signature,
+      }),
+    })
+      .then(async (res) => {
+        try {
+          const result = rc4.decode(res.data).replace("&&&START&&&", "");
+          this.log.info("result");
+        } catch (error) {
+          this.log.error(error);
+          return;
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async getActions() {
+    const path = "/scene/tplv2";
+    const data = { home_id: parseInt(this.home.homelist[0].id), accessKey: "IOS00026747c5acafc2", owner_uid: this.session.userId, limit: 300 };
+    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+    await this.requestClient({
+      method: "post",
+      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      headers: this.header,
+      data: qs.stringify({
+        _nonce: nonce,
+        data: data_rc,
+        rc4_hash__: rc4_hash_rc,
+        signature: signature,
+      }),
+    })
+      .then(async (res) => {
+        try {
+          const result = JSON.parse(rc4.decode(res.data)).result;
+          for (const device of result.tpl) {
+            this.log.info(device.model);
+            this.log.info(JSON.stringify(device.value.action_list));
+          }
+        } catch (error) {
+          this.log.error(error);
+          return;
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
 
   createBody(path, data) {
     const nonce = this.generateNonce();
@@ -294,7 +414,7 @@ class MihomeCloud extends utils.Adapter {
           params: {
             did: "$DID",
             siid: 7,
-            in: ["eyJpZCI6MCwibWV0aG9kIjoiZ2V0X3Byb3AiLCJwYXJhbXMiOlsiZ2V0X3N0YXR1cyJdfQ=="],
+            in: [Buffer.from(JSON.stringify({ id: 0, method: "get_prop", params: ["get_status"] })).toString("base64")],
             aiid: 1,
           },
         },
@@ -308,22 +428,7 @@ class MihomeCloud extends utils.Adapter {
         await this.requestClient({
           method: "post",
           url: "https://" + this.region + ".api.io.mi.com/app" + element.url,
-          headers: {
-            "miot-encrypt-algorithm": "ENCRYPT-RC4",
-            "content-type": "application/x-www-form-urlencoded",
-            accept: "*/*",
-            "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
-            "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
-            "operate-common":
-              "_region=" +
-              this.region +
-              "&_language=" +
-              this.region +
-              "_deviceId=" +
-              this.deviceId +
-              "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
-            "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
-          },
+          headers: this.header,
           data: qs.stringify({
             _nonce: nonce,
             data: data_rc,
@@ -344,20 +449,8 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             this.log.debug(JSON.stringify(res.data));
-            let resultData = res.data.result[device.did];
-            if (element.url === "/v2/device/batchgetdatas") {
-              resultData = res.data.result[device.did]["event.status"];
-              if (!resultData) {
-                this.log.debug(`No data for ${device.did} ${device.name}`);
-                return;
-              }
-              resultData = JSON.parse(resultData.value)[0];
-            }
-            if (res.data.result.out) {
-              const base64String = res.data.result.out[0];
-              resultData = JSON.parse(Buffer.from(base64String, "base64").toString("utf8"));
-              resultData = resultData.result[0];
-            }
+            const resultData = this.parseResponse(res, element.url, device.did);
+            this.log.debug(JSON.stringify(resultData));
             if (!resultData) {
               return;
             }
@@ -392,7 +485,23 @@ class MihomeCloud extends utils.Adapter {
       }
     }
   }
-
+  parseResponse(res, url, did) {
+    let resultData = res.data.result[did];
+    if (url === "/v2/device/batchgetdatas") {
+      resultData = res.data.result[did]["event.status"];
+      if (!resultData) {
+        this.log.debug(`No data for ${did} `);
+        return;
+      }
+      resultData = JSON.parse(resultData.value)[0];
+    }
+    if (res.data.result.out) {
+      const base64String = res.data.result.out[0];
+      resultData = JSON.parse(Buffer.from(base64String, "base64").toString("utf8"));
+      resultData = resultData.result[0];
+    }
+    return resultData;
+  }
   async refreshToken() {
     this.log.debug("Refresh token");
     await this.login();
@@ -454,28 +563,14 @@ class MihomeCloud extends utils.Adapter {
           this.updateDevices();
           return;
         }
+        //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
         const url = "/v2/device/batchgetdatas";
         const data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
         await this.requestClient({
           method: "post",
           url: "https://" + this.region + ".api.io.mi.com/app" + url,
-          headers: {
-            "miot-encrypt-algorithm": "ENCRYPT-RC4",
-            "content-type": "application/x-www-form-urlencoded",
-            accept: "*/*",
-            "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
-            "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
-            "operate-common":
-              "_region=" +
-              this.region +
-              "&_language=" +
-              this.region +
-              "_deviceId=" +
-              this.deviceId +
-              "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
-            "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
-          },
+          headers: this.header,
           data: qs.stringify({
             _nonce: nonce,
             data: data_rc,
