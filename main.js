@@ -11,6 +11,7 @@ const axios = require("axios");
 const qs = require("qs");
 const Json2iob = require("./lib/json2iob");
 const RC4Crypt = require("./lib/rc4");
+const configDes = require("./lib/configDes");
 const crypto = require("crypto");
 const tough = require("tough-cookie");
 const { HttpsCookieAgent } = require("http-cookie-agent/http");
@@ -28,7 +29,7 @@ class MihomeCloud extends utils.Adapter {
     this.on("stateChange", this.onStateChange.bind(this));
     this.on("unload", this.onUnload.bind(this));
     this.deviceArray = [];
-    this.region = "de";
+    this.local = "de";
     this.deviceId = this.randomString(40);
     this.header = {
       "miot-encrypt-algorithm": "ENCRYPT-RC4",
@@ -38,9 +39,9 @@ class MihomeCloud extends utils.Adapter {
       "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
       "operate-common":
         "_region=" +
-        this.region +
+        this.config.region +
         "&_language=" +
-        this.region +
+        this.local +
         "_deviceId=" +
         this.deviceId +
         "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
@@ -174,8 +175,14 @@ class MihomeCloud extends utils.Adapter {
         this.setState("info.connection", true, true);
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
-        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie(
+          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
+        await this.cookieJar.setCookie(
+          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
       })
       .catch((error) => {
         this.log.error(error);
@@ -190,7 +197,7 @@ class MihomeCloud extends utils.Adapter {
 
     await this.requestClient({
       method: "post",
-      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      url: "https://" + this.config.region + ".api.io.mi.com/app" + path,
       headers: this.header,
       data: qs.stringify({
         _nonce: nonce,
@@ -216,6 +223,7 @@ class MihomeCloud extends utils.Adapter {
           this.log.info(`Found ${res.data.result.list.length} devices`);
           for (const device of res.data.result.list) {
             this.log.debug(JSON.stringify(device));
+
             const id = device.did;
 
             this.deviceArray.push(device);
@@ -252,6 +260,13 @@ class MihomeCloud extends utils.Adapter {
               });
             });
             this.json2iob.parse(id + ".general", device, { forceIndex: true });
+            for (const config of configDes) {
+              if (config.models.includes(device.model)) {
+                this.log.info(`Found ${device.model} (${device.name}) with ${config.props.length} properties`);
+                for (const prop of config.props) {
+                  this.log.info(prop.prop_key);
+              }
+            }
           }
         }
       })
@@ -267,7 +282,7 @@ class MihomeCloud extends utils.Adapter {
 
     await this.requestClient({
       method: "post",
-      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      url: "https://" + this.config.region + ".api.io.mi.com/app" + path,
       headers: this.header,
       data: qs.stringify({
         _nonce: nonce,
@@ -296,7 +311,7 @@ class MihomeCloud extends utils.Adapter {
 
     await this.requestClient({
       method: "post",
-      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      url: "https://" + this.config.region + ".api.io.mi.com/app" + path,
       headers: this.header,
       data: qs.stringify({
         _nonce: nonce,
@@ -327,7 +342,7 @@ class MihomeCloud extends utils.Adapter {
 
     await this.requestClient({
       method: "post",
-      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      url: "https://" + this.config.region + ".api.io.mi.com/app" + path,
       headers: this.header,
       data: qs.stringify({
         _nonce: nonce,
@@ -352,12 +367,17 @@ class MihomeCloud extends utils.Adapter {
   }
   async getActions() {
     const path = "/scene/tplv2";
-    const data = { home_id: parseInt(this.home.homelist[0].id), accessKey: "IOS00026747c5acafc2", owner_uid: this.session.userId, limit: 300 };
+    const data = {
+      home_id: parseInt(this.home.homelist[0].id),
+      accessKey: "IOS00026747c5acafc2",
+      owner_uid: this.session.userId,
+      limit: 300,
+    };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
 
     await this.requestClient({
       method: "post",
-      url: "https://" + this.region + ".api.io.mi.com/app" + path,
+      url: "https://" + this.config.region + ".api.io.mi.com/app" + path,
       headers: this.header,
       data: qs.stringify({
         _nonce: nonce,
@@ -427,7 +447,7 @@ class MihomeCloud extends utils.Adapter {
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(element.url, data);
         await this.requestClient({
           method: "post",
-          url: "https://" + this.region + ".api.io.mi.com/app" + element.url,
+          url: "https://" + this.config.region + ".api.io.mi.com/app" + element.url,
           headers: this.header,
           data: qs.stringify({
             _nonce: nonce,
@@ -556,7 +576,7 @@ class MihomeCloud extends utils.Adapter {
       if (!state.ack) {
         const deviceId = id.split(".")[2];
         let command = id.split(".")[4];
-        // const type = command.split("-")[1];
+        const type = command.split("-")[1];
         command = command.split("-")[0];
 
         if (id.split(".")[4] === "Refresh") {
@@ -569,7 +589,7 @@ class MihomeCloud extends utils.Adapter {
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
         await this.requestClient({
           method: "post",
-          url: "https://" + this.region + ".api.io.mi.com/app" + url,
+          url: "https://" + this.config.region + ".api.io.mi.com/app" + url,
           headers: this.header,
           data: qs.stringify({
             _nonce: nonce,

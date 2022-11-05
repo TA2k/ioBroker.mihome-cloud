@@ -75,6 +75,7 @@
   "native": {
     "username": "",
     "password": "",
+    "region": "de",
     "interval": 10
   },
   "objects": [],
