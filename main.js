@@ -31,22 +31,7 @@ class MihomeCloud extends utils.Adapter {
     this.deviceArray = [];
     this.local = "de";
     this.deviceId = this.randomString(40);
-    this.header = {
-      "miot-encrypt-algorithm": "ENCRYPT-RC4",
-      "content-type": "application/x-www-form-urlencoded",
-      accept: "*/*",
-      "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
-      "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
-      "operate-common":
-        "_region=" +
-        this.config.region +
-        "&_language=" +
-        this.local +
-        "_deviceId=" +
-        this.deviceId +
-        "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
-      "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
-    };
+
     this.json2iob = new Json2iob(this);
     this.cookieJar = new tough.CookieJar();
     this.requestClient = axios.create({
@@ -73,7 +58,22 @@ class MihomeCloud extends utils.Adapter {
       this.log.error("Please set username and password in the instance settings");
       return;
     }
-
+    this.header = {
+      "miot-encrypt-algorithm": "ENCRYPT-RC4",
+      "content-type": "application/x-www-form-urlencoded",
+      accept: "*/*",
+      "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
+      "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
+      "operate-common":
+        "_region=" +
+        this.config.region +
+        "&_language=" +
+        this.local +
+        "_deviceId=" +
+        this.deviceId +
+        "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
+      "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
+    };
     this.updateInterval = null;
     this.reLoginTimeout = null;
     this.refreshTokenTimeout = null;
@@ -175,14 +175,8 @@ class MihomeCloud extends utils.Adapter {
         this.setState("info.connection", true, true);
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie(
-          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
-        await this.cookieJar.setCookie(
-          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
+        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
       })
       .catch((error) => {
         this.log.error(error);
@@ -265,6 +259,7 @@ class MihomeCloud extends utils.Adapter {
                 this.log.info(`Found ${device.model} (${device.name}) with ${config.props.length} properties`);
                 for (const prop of config.props) {
                   this.log.info(prop.prop_key);
+                }
               }
             }
           }
