@@ -368,7 +368,7 @@ class MihomeCloud extends utils.Adapter {
       });
   }
   async getActions() {
-    if (!this.home.homelist.length === 0) {
+    if (this.home.homelist.length === 0) {
       return;
     }
     const path = "/scene/tplv2";
