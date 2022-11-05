@@ -14,6 +14,7 @@ const RC4Crypt = require("./lib/rc4");
 const configDes = require("./lib/configDes");
 const crypto = require("crypto");
 const tough = require("tough-cookie");
+const AdmZip = require("adm-zip");
 const { HttpsCookieAgent } = require("http-cookie-agent/http");
 
 class MihomeCloud extends utils.Adapter {
@@ -29,10 +30,13 @@ class MihomeCloud extends utils.Adapter {
     this.on("stateChange", this.onStateChange.bind(this));
     this.on("unload", this.onUnload.bind(this));
     this.deviceArray = [];
+    this.deviceDicts = {};
     this.local = "de";
     this.deviceId = this.randomString(40);
-
+    this.remoteCommands = {};
+    this.events = {};
     this.json2iob = new Json2iob(this);
+
     this.cookieJar = new tough.CookieJar();
     this.requestClient = axios.create({
       withCredentials: true,
@@ -224,6 +228,7 @@ class MihomeCloud extends utils.Adapter {
             const id = device.did;
 
             this.deviceArray.push(device);
+            this.deviceDicts[id] = device;
             const name = device.name;
 
             await this.setObjectNotExistsAsync(id, {
@@ -241,21 +246,6 @@ class MihomeCloud extends utils.Adapter {
               native: {},
             });
 
-            const remoteArray = [{ command: "Refresh", name: "True = Refresh" }];
-            remoteArray.forEach((remote) => {
-              this.setObjectNotExists(id + ".remote." + remote.command, {
-                type: "state",
-                common: {
-                  name: remote.name || "",
-                  type: remote.type || "boolean",
-                  role: remote.role || "boolean",
-                  def: remote.def || false,
-                  write: true,
-                  read: true,
-                },
-                native: {},
-              });
-            });
             this.json2iob.parse(id + ".general", device, { forceIndex: true });
             try {
               for (const config of configDes) {
@@ -270,6 +260,106 @@ class MihomeCloud extends utils.Adapter {
               this.log.error(error);
             }
           }
+          await this.fetchPlugins();
+          for (const device of this.deviceArray) {
+            const remoteArray = this.remoteCommands[device.model];
+            remoteArray.forEach((remote) => {
+              this.setObjectNotExists(device.did + ".remote." + remote, {
+                type: "state",
+                common: {
+                  name: remote || "",
+                  type: "boolean",
+                  role: "boolean",
+                  def: false,
+                  write: true,
+                  read: true,
+                },
+                native: {},
+              });
+            });
+          }
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        this.log.error(error.stack);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async fetchPlugins() {
+    this.log.info("Fetching Plugins");
+    const path = "/v2/plugin/fetch_plugin";
+    const models = [];
+    for (const device of this.deviceArray) {
+      models.push({ model: device.model });
+    }
+
+    const data = {
+      accessKey: "IOS00026747c5acafc2",
+      latest_req: { plugins: models, app_platform: "IOS", api_version: 10075, package_type: "", region: "zh" },
+    };
+    const result = await this.genericRequest(path, data);
+    if (result && result.result && result.result.latest_info) {
+      for (const plugin of result.result.latest_info) {
+        this.log.info(`Found plugin for ${plugin.model} `);
+        await this.requestClient({
+          method: "get",
+          url: plugin.download_url,
+          responseType: "arraybuffer",
+        })
+          .then(async (res) => {
+            try {
+              const zip = new AdmZip(res.data);
+              var zipEntries = zip.getEntries();
+              for (const zipEntry of zipEntries) {
+                if (zipEntry.entryName.includes("main.bundle")) {
+                  const bundle = zip.readAsText(zipEntry);
+                  const regex = new RegExp("(?<=callMethod\\(.).*?(?=.,)", "gm");
+                  const matches = bundle.match(regex);
+                  this.remoteCommands[plugin.model] = matches;
+                  const regexEvents = new RegExp("(?<=subscribeMessages\\().*?(?=\\))", "gm");
+                  const eventMatches = bundle.match(regexEvents);
+                  this.events[plugin.model] = eventMatches[0].replace(/'/g, "").split(", ");
+                  this.log.info(`Found ${matches.length} remote commands for ${plugin.model}`);
+                  this.log.info(`Found ${this.events[plugin.model].length} remote events for ${plugin.model}`);
+                  return matches;
+                }
+              }
+            } catch (error) {
+              this.log.error(error);
+              return;
+            }
+          })
+          .catch((error) => {
+            this.log.error(error);
+            error.response && this.log.error(JSON.stringify(error.response.data));
+          });
+      }
+    }
+  }
+
+  async genericRequest(path, data) {
+    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+    return await this.requestClient({
+      method: "post",
+      url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+      headers: this.header,
+      data: qs.stringify({
+        _nonce: nonce,
+        data: data_rc,
+        rc4_hash__: rc4_hash_rc,
+        signature: signature,
+      }),
+    })
+      .then(async (res) => {
+        try {
+          const result = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
+          this.log.debug(JSON.stringify(result));
+          return result;
+        } catch (error) {
+          this.log.error(error);
+          return;
         }
       })
       .catch((error) => {
@@ -277,6 +367,7 @@ class MihomeCloud extends utils.Adapter {
         error.response && this.log.error(JSON.stringify(error.response.data));
       });
   }
+
   async listLocal() {
     const path = "/v2/home/local_device_list";
     const data = { accessKey: "IOS00026747c5acafc2" };
@@ -423,7 +514,7 @@ class MihomeCloud extends utils.Adapter {
   }
 
   async updateDevices() {
-    const statusArray = [
+    let statusArray = [
       {
         url: "/v2/device/batchgetdatas",
         path: "status",
@@ -446,8 +537,32 @@ class MihomeCloud extends utils.Adapter {
       },
     ];
 
-    for (const element of statusArray) {
-      for (const device of this.deviceArray) {
+    for (const device of this.deviceArray) {
+      if (this.remoteCommands[device.model]) {
+        statusArray = [
+          {
+            url: "/home/rpc/" + device.did,
+            path: "status",
+            desc: "Status of the device",
+            props: { id: 0, method: this.remoteCommands[device.model][0], accessKey: "IOS00026747c5acafc2", params: [] },
+          },
+          {
+            url: "/mipush/eventsub",
+            path: "events",
+            desc: "Events of the device",
+            props: {
+              expire: 10,
+              method: this.events[device.model],
+              did: "$DID",
+              client: 1,
+              subid: "0",
+              accessKey: "IOS00026747c5acafc2",
+              pid: 0,
+            },
+          },
+        ];
+      }
+      for (const element of statusArray) {
         const data = JSON.parse(JSON.stringify(element.props).replace("$DID", device.did));
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(element.url, data);
         await this.requestClient({
@@ -469,10 +584,11 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.error("Error getting device status");
+              this.log.error(`Error getting ${element.desc} for ${device.name} (${device.did})`);
               this.log.error(JSON.stringify(res.data));
               return;
             }
+
             this.log.debug(JSON.stringify(res.data));
             const resultData = this.parseResponse(res, element.url, device.did);
             this.log.debug(JSON.stringify(resultData));
@@ -511,6 +627,9 @@ class MihomeCloud extends utils.Adapter {
     }
   }
   parseResponse(res, url, did) {
+    if (Array.isArray(res.data.result)) {
+      return { status: res.data.result[1] };
+    }
     let resultData = res.data.result[did];
     if (url === "/v2/device/batchgetdatas") {
       resultData = res.data.result[did]["event.status"];
@@ -589,8 +708,13 @@ class MihomeCloud extends utils.Adapter {
           return;
         }
         //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
-        const url = "/v2/device/batchgetdatas";
-        const data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
+
+        let url = "/v2/device/batchgetdatas";
+        let data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
+        if (this.remoteCommands[this.deviceDicts[deviceId].model]) {
+          url = "/home/rpc/" + deviceId;
+          data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: [] };
+        }
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
         await this.requestClient({
           method: "post",
@@ -610,12 +734,12 @@ class MihomeCloud extends utils.Adapter {
               this.log.error(error);
               return;
             }
-            if (res.data.result !== 0) {
-              this.log.error("Error getting device statis");
+            if (res.data.code !== 0) {
+              this.log.error("Error setting device state");
               this.log.error(JSON.stringify(res.data));
               return;
             }
-            this.log.debug(JSON.stringify(res.data));
+            this.log.info(JSON.stringify(res.data));
           })
           .catch(async (error) => {
             this.log.error(error);
