@@ -316,6 +316,14 @@ class MihomeCloud extends utils.Adapter {
                   const bundle = zip.readAsText(zipEntry);
                   const regex = new RegExp("(?<=callMethod\\(.).*?(?=.,)", "gm");
                   const matches = bundle.match(regex);
+                  const regexCases = new RegExp("case.*:\\n.*type = '(.*)';", "gm");
+                  const matchesCases = bundle.matchAll(regexCases);
+
+                  for (const match of matchesCases) {
+                    if (match[1]) {
+                      matches.push(match[1]);
+                    }
+                  }
                   this.remoteCommands[plugin.model] = matches;
                   const regexEvents = new RegExp("(?<=subscribeMessages\\().*?(?=\\))", "gm");
                   const eventMatches = bundle.match(regexEvents);
@@ -584,8 +592,8 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.error(`Error getting ${element.desc} for ${device.name} (${device.did})`);
-              this.log.error(JSON.stringify(res.data));
+              this.log.info(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${element.props}`);
+              this.log.info(JSON.stringify(res.data));
               return;
             }
 
@@ -621,6 +629,7 @@ class MihomeCloud extends utils.Adapter {
             }
             this.log.error(element.url);
             this.log.error(error);
+            error.stack && this.log.error(error.stack);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
       }
@@ -629,6 +638,9 @@ class MihomeCloud extends utils.Adapter {
   parseResponse(res, url, did) {
     if (Array.isArray(res.data.result)) {
       return { status: res.data.result[1] };
+    }
+    if (!res.data.result) {
+      return JSON.parse(res.data);
     }
     let resultData = res.data.result[did];
     if (url === "/v2/device/batchgetdatas") {
