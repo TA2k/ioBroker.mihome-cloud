@@ -78,6 +78,7 @@ class MihomeCloud extends utils.Adapter {
         "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
       "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
     };
+    this.config.region = "de";
     this.config.region = this.config.region === "cn" ? "" : this.config.region + ".";
     this.updateInterval = null;
     this.reLoginTimeout = null;
@@ -251,7 +252,7 @@ class MihomeCloud extends utils.Adapter {
             try {
               for (const config of configDes) {
                 if (config.models.includes(device.model)) {
-                  this.log.info(`Found ${device.model} (${device.name}) with ${config.props.length} properties `);
+                  this.log.info(`Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `);
                   for (const prop of config.props) {
                     this.log.info(prop.prop_key);
                   }
@@ -265,18 +266,22 @@ class MihomeCloud extends utils.Adapter {
           for (const device of this.deviceArray) {
             const remoteArray = this.remoteCommands[device.model] || [];
             for (const remote of remoteArray) {
-              this.setObjectNotExists(device.did + ".remote." + remote, {
-                type: "state",
-                common: {
-                  name: remote || "",
-                  type: "boolean",
-                  role: "boolean",
-                  def: false,
-                  write: true,
-                  read: true,
-                },
-                native: {},
-              });
+              try {
+                this.setObjectNotExists(device.did + ".remote." + remote, {
+                  type: "state",
+                  common: {
+                    name: remote || "",
+                    type: "boolean",
+                    role: "boolean",
+                    def: false,
+                    write: true,
+                    read: true,
+                  },
+                  native: {},
+                });
+              } catch (error) {
+                this.log.error(error);
+              }
             }
           }
         }
@@ -290,16 +295,17 @@ class MihomeCloud extends utils.Adapter {
   async fetchPlugins() {
     this.log.info("Fetching Plugins");
     const path = "/v2/plugin/fetch_plugin";
-    const models = [];
+    const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
     for (const device of this.deviceArray) {
-      models.push({ model: device.model });
+      // models.push({ model: device.model });
     }
 
     const data = {
       accessKey: "IOS00026747c5acafc2",
       latest_req: { plugins: models, app_platform: "IOS", api_version: 10075, package_type: "", region: "zh" },
     };
-    const result = await this.genericRequest(path, data);
+    let result = await this.genericRequest(path, data);
+
     if (result && result.result && result.result.latest_info) {
       for (const plugin of result.result.latest_info) {
         this.log.info(`Found plugin for ${plugin.model} `);
@@ -315,7 +321,7 @@ class MihomeCloud extends utils.Adapter {
               for (const zipEntry of zipEntries) {
                 if (zipEntry.entryName.includes("main.bundle")) {
                   const bundle = zip.readAsText(zipEntry);
-                  const regex = new RegExp("(?<=callMethod\\(.).*?(?=.,)", "gm");
+                  const regex = new RegExp("(?<=Method\\(.).*?(?=.,)", "gm");
                   let matches = bundle.match(regex);
                   const regexCases = new RegExp("case.*:\\n.*type = '(.*)';", "gm");
                   const matchesCases = bundle.matchAll(regexCases);
@@ -325,8 +331,9 @@ class MihomeCloud extends utils.Adapter {
                       matches.push(match[1]);
                     }
                   }
-                  const filteredMatches = matches.filter((match) => match.length > 10);
-                  if (filteredMatches.length >= matches.length) {
+
+                  const filteredMatches = matches.filter((match) => match.length < 20);
+                  if (filteredMatches.length != matches.length) {
                     this.log.warn("Remote commmands too long for " + plugin.model);
                     this.log.warn("Please report this url to the developer: " + plugin.download_url);
                   }
@@ -337,6 +344,7 @@ class MihomeCloud extends utils.Adapter {
                     this.events[plugin.model] = eventMatches[0].replace(/'/g, "").split(", ");
                   }
                   this.log.info(`Found ${matches.length} remote commands for ${plugin.model}`);
+                  this.log.debug(`Remote commands for ${plugin.model}: ${JSON.stringify(matches)}`);
                   const eventLength = this.events[plugin.model] ? this.events[plugin.model].length : 0;
                   this.log.info(`Found ${eventLength} remote events for ${plugin.model}`);
                   return matches;
