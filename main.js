@@ -87,6 +87,7 @@ class MihomeCloud extends utils.Adapter {
 
     this.log.info("Login to MiHome Cloud");
     await this.login();
+
     if (this.session.ssecurity) {
       await this.getDeviceList();
       await this.updateDevices();
@@ -262,8 +263,8 @@ class MihomeCloud extends utils.Adapter {
           }
           await this.fetchPlugins();
           for (const device of this.deviceArray) {
-            const remoteArray = this.remoteCommands[device.model];
-            remoteArray.forEach((remote) => {
+            const remoteArray = this.remoteCommands[device.model] || [];
+            for (const remote of remoteArray) {
               this.setObjectNotExists(device.did + ".remote." + remote, {
                 type: "state",
                 common: {
@@ -276,7 +277,7 @@ class MihomeCloud extends utils.Adapter {
                 },
                 native: {},
               });
-            });
+            }
           }
         }
       })
@@ -332,9 +333,12 @@ class MihomeCloud extends utils.Adapter {
                   this.remoteCommands[plugin.model] = filteredMatches;
                   const regexEvents = new RegExp("(?<=subscribeMessages\\().*?(?=\\))", "gm");
                   const eventMatches = bundle.match(regexEvents);
-                  this.events[plugin.model] = eventMatches[0].replace(/'/g, "").split(", ");
+                  if (eventMatches) {
+                    this.events[plugin.model] = eventMatches[0].replace(/'/g, "").split(", ");
+                  }
                   this.log.info(`Found ${matches.length} remote commands for ${plugin.model}`);
-                  this.log.info(`Found ${this.events[plugin.model].length} remote events for ${plugin.model}`);
+                  const eventLength = this.events[plugin.model] ? this.events[plugin.model].length : 0;
+                  this.log.info(`Found ${eventLength} remote events for ${plugin.model}`);
                   return matches;
                 }
               }
