@@ -315,7 +315,7 @@ class MihomeCloud extends utils.Adapter {
                 if (zipEntry.entryName.includes("main.bundle")) {
                   const bundle = zip.readAsText(zipEntry);
                   const regex = new RegExp("(?<=callMethod\\(.).*?(?=.,)", "gm");
-                  const matches = bundle.match(regex);
+                  let matches = bundle.match(regex);
                   const regexCases = new RegExp("case.*:\\n.*type = '(.*)';", "gm");
                   const matchesCases = bundle.matchAll(regexCases);
 
@@ -324,7 +324,12 @@ class MihomeCloud extends utils.Adapter {
                       matches.push(match[1]);
                     }
                   }
-                  this.remoteCommands[plugin.model] = matches;
+                  const filteredMatches = matches.filter((match) => match.length > 10);
+                  if (filteredMatches.length >= matches.length) {
+                    this.log.warn("Remote commmands too long for " + plugin.model);
+                    this.log.warn("Please report this url to the developer: " + plugin.download_url);
+                  }
+                  this.remoteCommands[plugin.model] = filteredMatches;
                   const regexEvents = new RegExp("(?<=subscribeMessages\\().*?(?=\\))", "gm");
                   const eventMatches = bundle.match(regexEvents);
                   this.events[plugin.model] = eventMatches[0].replace(/'/g, "").split(", ");
@@ -592,7 +597,7 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.info(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${element.props}`);
+              this.log.info(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
               this.log.info(JSON.stringify(res.data));
               return;
             }
