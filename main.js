@@ -295,9 +295,10 @@ class MihomeCloud extends utils.Adapter {
   async fetchPlugins() {
     this.log.info("Fetching Plugins");
     const path = "/v2/plugin/fetch_plugin";
-    const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
+    // const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
+    const models = [];
     for (const device of this.deviceArray) {
-      // models.push({ model: device.model });
+      models.push({ model: device.model });
     }
 
     const data = {
