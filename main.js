@@ -78,7 +78,6 @@ class MihomeCloud extends utils.Adapter {
         "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
       "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
     };
-    this.config.region = "de";
     this.config.region = this.config.region === "cn" ? "" : this.config.region + ".";
     this.updateInterval = null;
     this.reLoginTimeout = null;
