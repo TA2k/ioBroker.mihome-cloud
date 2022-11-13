@@ -889,7 +889,7 @@ class MihomeCloud extends utils.Adapter {
       } catch (error) {
         this.log.warn(`Error parsing ${url} for ${did}`);
         this.log.warn(res.data);
-        return;
+        return res.data;
       }
     }
     let resultData = res.data.result[did];
