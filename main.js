@@ -34,6 +34,8 @@ class MihomeCloud extends utils.Adapter {
     this.local = "de";
     this.deviceId = this.randomString(40);
     this.remoteCommands = {};
+    this.specStatusDict = {};
+    this.specToIdDict = {};
     this.events = {};
     this.json2iob = new Json2iob(this);
 
@@ -90,11 +92,13 @@ class MihomeCloud extends utils.Adapter {
 
     if (this.session.ssecurity) {
       await this.getDeviceList();
+      await this.updateDevicesViaSpec();
       await this.updateDevices();
       await this.listLocal();
       await this.getHome();
       await this.getActions();
       this.updateInterval = setInterval(async () => {
+        await this.updateDevicesViaSpec();
         await this.updateDevices();
       }, this.config.interval * 60 * 1000);
     }
@@ -239,13 +243,6 @@ class MihomeCloud extends utils.Adapter {
               },
               native: {},
             });
-            await this.setObjectNotExistsAsync(id + ".remote", {
-              type: "channel",
-              common: {
-                name: "Remote Controls",
-              },
-              native: {},
-            });
 
             this.json2iob.parse(id + ".general", device, { forceIndex: true });
             try {
@@ -261,17 +258,37 @@ class MihomeCloud extends utils.Adapter {
               this.log.error(error);
             }
           }
+          await this.fetchSpecs();
           await this.fetchPlugins();
+
           for (const device of this.deviceArray) {
+            if (this.specs[device.spec_type]) {
+              this.log.debug(JSON.stringify(this.specs[device.spec_type]));
+              await this.extractRemotesFromSpec(device);
+            }
             const remoteArray = this.remoteCommands[device.model] || [];
             for (const remote of remoteArray) {
+              await this.setObjectNotExistsAsync(device.did + ".remotePlugins", {
+                type: "channel",
+                common: {
+                  name: "Remote Controls extracted from Plugin definition",
+                },
+                native: {},
+              });
+
+              let name = remote;
+              let params = "";
+              if (typeof remote === "object") {
+                name = remote.type;
+                params = remote.params;
+              }
               try {
-                this.setObjectNotExists(device.did + ".remote." + remote, {
+                this.setObjectNotExists(device.did + ".remotePlugins." + name, {
                   type: "state",
                   common: {
-                    name: remote || "",
-                    type: "boolean",
-                    role: "boolean",
+                    name: name + " " + params || "",
+                    type: params ? "mixed" : "boolean",
+                    role: params ? "state" : "boolean",
                     def: false,
                     write: true,
                     read: true,
@@ -323,20 +340,21 @@ class MihomeCloud extends utils.Adapter {
                   const bundle = zip.readAsText(zipEntry);
                   const regex = new RegExp("(?<=Method\\(.).*?(?=.,)", "gm");
                   let matches = bundle.match(regex);
-                  const regexCases = new RegExp("case.*:\\n.*type = '(.*)';", "gm");
-                  const matchesCases = bundle.matchAll(regexCases);
-
-                  for (const match of matchesCases) {
-                    if (match[1]) {
-                      matches.push(match[1]);
-                    }
-                  }
-
-                  const filteredMatches = matches.filter((match) => match.length < 20);
+                  const filteredMatches = matches.filter((match) => match.length < 35);
                   if (filteredMatches.length != matches.length) {
                     this.log.warn("Remote commmands too long for " + plugin.model);
                     this.log.warn("Please report this url to the developer: " + plugin.download_url);
                   }
+
+                  const regexCases = new RegExp("case.*:\\n.*type = '(.*)'.*\\n.*params = (.*);", "gm");
+                  const matchesCases = bundle.matchAll(regexCases);
+
+                  for (const match of matchesCases) {
+                    if (match[1] && match[1].length < 35) {
+                      filteredMatches.push({ type: match[1], params: match[2] });
+                    }
+                  }
+
                   this.remoteCommands[plugin.model] = filteredMatches;
                   const regexEvents = new RegExp("(?<=subscribeMessages\\().*?(?=\\))", "gm");
                   const eventMatches = bundle.match(regexEvents);
@@ -359,6 +377,112 @@ class MihomeCloud extends utils.Adapter {
             this.log.error(error);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
+      }
+    }
+  }
+  async fetchSpecs() {
+    this.log.info("Fetching Specs");
+    const path = "/v2/plugin/fetch_plugin";
+    // const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
+    let specs = [];
+    for (const device of this.deviceArray) {
+      // device.spec_type = "urn:miot-spec-v2:device:light:0000A001:yeelink-bslamp1:1";
+      specs.push(device.spec_type);
+    }
+    // specs = ["urn:miot-spec-v2:device:humidifier:0000A00E:deerma-jsq:1", "urn:miot-spec-v2:device:light:0000A001:yeelink-bslamp1:1"];
+
+    await this.requestClient({
+      method: "post",
+      url: "https://miot-spec.org/miot-spec-v2/instance",
+      data: {
+        urns: specs,
+      },
+    })
+      .then(async (res) => {
+        this.specs = res.data;
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
+  }
+  async extractRemotesFromSpec(device) {
+    const spec = this.specs[device.spec_type];
+    this.log.info(`Extracting remotes from spec for ${device.model} ${spec.description}`);
+    let siid = 0;
+    this.specStatusDict[device.did] = [];
+    this.specToIdDict[device.did] = {};
+    for (const service of spec.services) {
+      siid++;
+      const typeArray = service.type.split(":");
+      if (typeArray[3] === "device-information") {
+        continue;
+      }
+      let piid = 0;
+      for (const property of service.properties) {
+        piid++;
+        const remote = {
+          siid: siid,
+          piid: piid,
+          did: device.did,
+          model: device.model,
+          name: service.description + " " + property.description,
+          type: property.type,
+          access: property.access,
+        };
+        const typeName = property.type.split(":")[3];
+        let path = "status";
+        let write = false;
+
+        if (property.access.includes("write")) {
+          path = "remote";
+          write = true;
+        }
+        const [type, role] = this.getRole(property.format, write, property["value-range"]);
+        this.log.debug(`Found remote for ${device.model} ${service.description} ${property.description}`);
+
+        await this.setObjectNotExistsAsync(device.did + "." + path, {
+          type: "channel",
+          common: {
+            name: "Remote Controls extracted from Spec definition",
+          },
+          native: {},
+        });
+        const states = {};
+        if (property["value-list"]) {
+          for (const value of property["value-list"]) {
+            states[value.value] = value.description;
+          }
+        }
+
+        this.setObjectNotExists(device.did + "." + path + "." + typeName, {
+          type: "state",
+          common: {
+            name: remote.name || "",
+            type: type,
+            role: role,
+            unit: property.unit ? property.unit : undefined,
+            min: property["value-range"] ? property["value-range"][0] : undefined,
+            max: property["value-range"] ? property["value-range"][1] : undefined,
+            states: property["value-list"] ? states : undefined,
+            write: write,
+            read: true,
+          },
+          native: {
+            siid: siid,
+            piid: piid,
+            did: device.did,
+            model: device.model,
+            name: service.description + " " + property.description,
+            type: property.type,
+            access: property.access,
+          },
+        });
+
+        if (property.access.includes("notify")) {
+          this.specStatusDict[device.did].push({ did: device.did, siid: remote.siid, code: 0, piid: remote.piid, updateTime: 0 });
+          this.specToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + path + "." + typeName;
+        }
       }
     }
   }
@@ -537,18 +661,33 @@ class MihomeCloud extends utils.Adapter {
     const signature = crypto.createHash("sha1").update(params.join("&"), "utf8").digest("base64");
     return { nonce, data_rc, rc4_hash_rc, signature, rc4 };
   }
+  getRole(element, write, valueRange) {
+    if (element === "bool" && !write) {
+      return ["boolean", "indicator"];
+    }
+    if (element === "bool" && write) {
+      return ["boolean", "switch"];
+    }
+    if ((element.indexOf("uint") !== -1 || valueRange) && !write) {
+      return ["number", "value"];
+    }
+    if ((element.indexOf("uint") !== -1 || valueRange) && write) {
+      return ["number", "level"];
+    }
 
+    return ["string", "text"];
+  }
   async updateDevices() {
     let statusArray = [
       {
         url: "/v2/device/batchgetdatas",
-        path: "status",
+        path: "statusEvent",
         desc: "Status of the device",
         props: [{ did: "$DID", props: ["event.status"], accessKey: "IOS00026747c5acafc2" }],
       },
       {
         url: "/miotspec/action",
-        path: "status",
+        path: "statusAction",
         desc: "Status of the device",
         props: {
           accessKey: "IOS00026747c5acafc2",
@@ -567,24 +706,24 @@ class MihomeCloud extends utils.Adapter {
         statusArray = [
           {
             url: "/home/rpc/" + device.did,
-            path: "status",
-            desc: "Status of the device",
+            path: "statusPlugin",
+            desc: "Status of the device via Plugin",
             props: { id: 0, method: this.remoteCommands[device.model][0], accessKey: "IOS00026747c5acafc2", params: [] },
           },
-          {
-            url: "/mipush/eventsub",
-            path: "events",
-            desc: "Events of the device",
-            props: {
-              expire: 10,
-              method: this.events[device.model],
-              did: "$DID",
-              client: 1,
-              subid: "0",
-              accessKey: "IOS00026747c5acafc2",
-              pid: 0,
-            },
-          },
+          // {
+          //   url: "/mipush/eventsub",
+          //   path: "events",
+          //   desc: "Events of the device",
+          //   props: {
+          //     expire: 10,
+          //     method: this.events[device.model],
+          //     did: "$DID",
+          //     client: 1,
+          //     subid: "0",
+          //     accessKey: "IOS00026747c5acafc2",
+          //     pid: 0,
+          //   },
+          // },
         ];
       }
       for (const element of statusArray) {
@@ -645,6 +784,66 @@ class MihomeCloud extends utils.Adapter {
               }
             }
             this.log.error(element.url);
+            this.log.error(error);
+            error.stack && this.log.error(error.stack);
+            error.response && this.log.error(JSON.stringify(error.response.data));
+          });
+      }
+    }
+  }
+  async updateDevicesViaSpec() {
+    for (const device of this.deviceArray) {
+      const url = "/miotspec/prop/get";
+      if (this.specStatusDict[device.did]) {
+        const data = { type: 3, accessKey: "IOS00026747c5acafc2", params: this.specStatusDict[device.did] };
+        this.log.debug(`Get status for ${device.did} via spec`);
+        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
+        await this.requestClient({
+          method: "post",
+          url: "https://" + this.config.region + "api.io.mi.com/app" + url,
+          headers: this.header,
+          data: qs.stringify({
+            _nonce: nonce,
+            data: data_rc,
+            rc4_hash__: rc4_hash_rc,
+            signature: signature,
+          }),
+        })
+          .then(async (res) => {
+            try {
+              res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
+            } catch (error) {
+              this.log.error(error);
+              return;
+            }
+            if (res.data.code !== 0) {
+              this.log.info(`Error getting  for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
+              this.log.info(JSON.stringify(res.data));
+              return;
+            }
+
+            for (const element of res.data.result) {
+              const path = this.specToIdDict[device.did][element.siid + "-" + element.piid];
+              if (path) {
+                this.log.debug(`Set ${path} to ${element.value}`);
+                this.setState(path, element.value, true);
+              }
+            }
+          })
+          .catch((error) => {
+            if (error.response) {
+              if (error.response.status === 401) {
+                error.response && this.log.debug(JSON.stringify(error.response.data));
+                this.log.info(element.path + " receive 401 error. Refresh Token in 60 seconds");
+                this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
+                this.refreshTokenTimeout = setTimeout(() => {
+                  this.refreshToken();
+                }, 1000 * 60);
+
+                return;
+              }
+            }
+            this.log.error(url);
             this.log.error(error);
             error.stack && this.log.error(error.stack);
             error.response && this.log.error(JSON.stringify(error.response.data));
@@ -738,12 +937,31 @@ class MihomeCloud extends utils.Adapter {
         }
         //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
 
+        const stateObject = await this.getObjectAsync(id);
+        const params = [];
+        if (stateObject && stateObject.type === "mixed") {
+          try {
+            params = JSON.parse(state.val);
+          } catch (error) {
+            this.log.error(error);
+            return;
+          }
+        }
         let url = "/v2/device/batchgetdatas";
         let data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
         if (this.remoteCommands[this.deviceDicts[deviceId].model]) {
           url = "/home/rpc/" + deviceId;
-          data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: [] };
+          data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: params };
         }
+        if (id.includes(".remote.")) {
+          url = "/miotspec/prop/set";
+          data = {
+            type: 3,
+            accessKey: "IOS00026747c5acafc2",
+            params: [{ did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val }],
+          };
+        }
+        this.log.info(JSON.stringify(data));
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
         await this.requestClient({
           method: "post",
@@ -763,6 +981,9 @@ class MihomeCloud extends utils.Adapter {
               this.log.error(error);
               return;
             }
+            if (res.data.result && res.data.result.length > 0) {
+              res.data = res.data.result[0];
+            }
             if (res.data.code !== 0) {
               this.log.error("Error setting device state");
               this.log.error(JSON.stringify(res.data));
@@ -777,6 +998,7 @@ class MihomeCloud extends utils.Adapter {
         this.refreshTimeout = setTimeout(async () => {
           this.log.info("Update devices");
           await this.updateDevices();
+          await this.updateDevicesViaSpec();
         }, 10 * 1000);
       } else {
         const resultDict = {
