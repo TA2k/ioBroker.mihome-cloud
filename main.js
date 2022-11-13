@@ -289,7 +289,7 @@ class MihomeCloud extends utils.Adapter {
                     name: name + " " + params || "",
                     type: params ? "mixed" : "boolean",
                     role: params ? "state" : "boolean",
-                    def: false,
+                    def: params ? params : false,
                     write: true,
                     read: true,
                   },
