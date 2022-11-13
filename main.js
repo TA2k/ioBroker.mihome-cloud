@@ -186,8 +186,14 @@ class MihomeCloud extends utils.Adapter {
         this.log.info("Login successful");
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
-        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie(
+          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
+        await this.cookieJar.setCookie(
+          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
       })
       .catch((error) => {
         this.log.error(error);
@@ -248,7 +254,9 @@ class MihomeCloud extends utils.Adapter {
             try {
               for (const config of configDes) {
                 if (config.models.includes(device.model)) {
-                  this.log.info(`Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `);
+                  this.log.info(
+                    `Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `,
+                  );
                   for (const prop of config.props) {
                     this.log.info(prop.prop_key);
                   }
@@ -418,57 +426,11 @@ class MihomeCloud extends utils.Adapter {
       if (typeArray[3] === "device-information") {
         continue;
       }
-      let piid = 0;
-      for (const property of service.properties) {
-        piid++;
-        const remote = {
-          siid: siid,
-          piid: piid,
-          did: device.did,
-          model: device.model,
-          name: service.description + " " + property.description,
-          type: property.type,
-          access: property.access,
-        };
-        const typeName = property.type.split(":")[3];
-        let path = "status";
-        let write = false;
-
-        if (property.access.includes("write")) {
-          path = "remote";
-          write = true;
-        }
-        const [type, role] = this.getRole(property.format, write, property["value-range"]);
-        this.log.debug(`Found remote for ${device.model} ${service.description} ${property.description}`);
-
-        await this.setObjectNotExistsAsync(device.did + "." + path, {
-          type: "channel",
-          common: {
-            name: "Remote Controls extracted from Spec definition",
-          },
-          native: {},
-        });
-        const states = {};
-        if (property["value-list"]) {
-          for (const value of property["value-list"]) {
-            states[value.value] = value.description;
-          }
-        }
-
-        this.setObjectNotExists(device.did + "." + path + "." + typeName, {
-          type: "state",
-          common: {
-            name: remote.name || "",
-            type: type,
-            role: role,
-            unit: property.unit ? property.unit : undefined,
-            min: property["value-range"] ? property["value-range"][0] : undefined,
-            max: property["value-range"] ? property["value-range"][1] : undefined,
-            states: property["value-list"] ? states : undefined,
-            write: write,
-            read: true,
-          },
-          native: {
+      try {
+        let piid = 0;
+        for (const property of service.properties) {
+          piid++;
+          const remote = {
             siid: siid,
             piid: piid,
             did: device.did,
@@ -476,13 +438,70 @@ class MihomeCloud extends utils.Adapter {
             name: service.description + " " + property.description,
             type: property.type,
             access: property.access,
-          },
-        });
+          };
+          const typeName = property.type.split(":")[3];
+          let path = "status";
+          let write = false;
 
-        if (property.access.includes("notify")) {
-          this.specStatusDict[device.did].push({ did: device.did, siid: remote.siid, code: 0, piid: remote.piid, updateTime: 0 });
-          this.specToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + path + "." + typeName;
+          if (property.access.includes("write")) {
+            path = "remote";
+            write = true;
+          }
+          const [type, role] = this.getRole(property.format, write, property["value-range"]);
+          this.log.debug(`Found remote for ${device.model} ${service.description} ${property.description}`);
+
+          await this.setObjectNotExistsAsync(device.did + "." + path, {
+            type: "channel",
+            common: {
+              name: "Remote Controls extracted from Spec definition",
+            },
+            native: {},
+          });
+          const states = {};
+          if (property["value-list"]) {
+            for (const value of property["value-list"]) {
+              states[value.value] = value.description;
+            }
+          }
+
+          this.setObjectNotExists(device.did + "." + path + "." + typeName, {
+            type: "state",
+            common: {
+              name: remote.name || "",
+              type: type,
+              role: role,
+              unit: property.unit ? property.unit : undefined,
+              min: property["value-range"] ? property["value-range"][0] : undefined,
+              max: property["value-range"] ? property["value-range"][1] : undefined,
+              states: property["value-list"] ? states : undefined,
+              write: write,
+              read: true,
+            },
+            native: {
+              siid: siid,
+              piid: piid,
+              did: device.did,
+              model: device.model,
+              name: service.description + " " + property.description,
+              type: property.type,
+              access: property.access,
+            },
+          });
+
+          if (property.access.includes("notify")) {
+            this.specStatusDict[device.did].push({
+              did: device.did,
+              siid: remote.siid,
+              code: 0,
+              piid: remote.piid,
+              updateTime: 0,
+            });
+            this.specToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + path + "." + typeName;
+          }
         }
+      } catch (error) {
+        this.log.error(error);
+        this.log.info(JSON.stringify(service));
       }
     }
   }
@@ -708,7 +727,12 @@ class MihomeCloud extends utils.Adapter {
             url: "/home/rpc/" + device.did,
             path: "statusPlugin",
             desc: "Status of the device via Plugin",
-            props: { id: 0, method: this.remoteCommands[device.model][0], accessKey: "IOS00026747c5acafc2", params: [] },
+            props: {
+              id: 0,
+              method: this.remoteCommands[device.model][0],
+              accessKey: "IOS00026747c5acafc2",
+              params: [],
+            },
           },
           // {
           //   url: "/mipush/eventsub",
@@ -748,7 +772,11 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.info(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
+              this.log.info(
+                `Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(
+                  element.props,
+                )}`,
+              );
               this.log.info(JSON.stringify(res.data));
               return;
             }
@@ -856,7 +884,13 @@ class MihomeCloud extends utils.Adapter {
       return { status: res.data.result[1] };
     }
     if (!res.data.result) {
-      return JSON.parse(res.data);
+      try {
+        return JSON.parse(res.data);
+      } catch (error) {
+        this.log.warn(`Error parsing ${url} for ${did}`);
+        this.log.warn(res.data);
+        return;
+      }
     }
     let resultData = res.data.result[did];
     if (url === "/v2/device/batchgetdatas") {
