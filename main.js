@@ -887,8 +887,6 @@ class MihomeCloud extends utils.Adapter {
       try {
         return JSON.parse(res.data);
       } catch (error) {
-        this.log.warn(`Error parsing ${url} for ${did}`);
-        this.log.warn(res.data);
         return res.data;
       }
     }
