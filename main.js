@@ -722,6 +722,9 @@ class MihomeCloud extends utils.Adapter {
 
     for (const device of this.deviceArray) {
       if (this.remoteCommands[device.model]) {
+        if (!this.remoteCommands[device.model][0].includes("get")) {
+          continue;
+        }
         statusArray = [
           {
             url: "/home/rpc/" + device.did,
@@ -854,7 +857,9 @@ class MihomeCloud extends utils.Adapter {
               const path = this.specToIdDict[device.did][element.siid + "-" + element.piid];
               if (path) {
                 this.log.debug(`Set ${path} to ${element.value}`);
-                this.setState(path, element.value, true);
+                if (element.value != null) {
+                  this.setState(path, element.value, true);
+                }
               }
             }
           })
