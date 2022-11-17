@@ -129,8 +129,9 @@ class MihomeCloud extends utils.Adapter {
       .catch((error) => {
         this.log.error(error);
         error.response && this.log.error(JSON.stringify(error.response.data));
+        return {};
       });
-    if (!firstStep._sign) {
+    if (!firstStep || !firstStep._sign) {
       this.log.error("No sign in first step");
       return;
     }
