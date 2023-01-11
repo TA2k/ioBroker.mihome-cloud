@@ -187,14 +187,8 @@ class MihomeCloud extends utils.Adapter {
         this.log.info("Login successful");
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie(
-          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
-        await this.cookieJar.setCookie(
-          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
+        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
       })
       .catch((error) => {
         this.log.error(error);
@@ -255,9 +249,7 @@ class MihomeCloud extends utils.Adapter {
             try {
               for (const config of configDes) {
                 if (config.models.includes(device.model)) {
-                  this.log.info(
-                    `Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `,
-                  );
+                  this.log.info(`Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `);
                   for (const prop of config.props) {
                     this.log.info(prop.prop_key);
                   }
@@ -422,7 +414,11 @@ class MihomeCloud extends utils.Adapter {
     this.specStatusDict[device.did] = [];
     this.specToIdDict[device.did] = {};
     for (const service of spec.services) {
-      siid++;
+      if (service.iid) {
+        siid = service.iid;
+      } else {
+        siid++;
+      }
       const typeArray = service.type.split(":");
       if (typeArray[3] === "device-information") {
         continue;
@@ -430,7 +426,11 @@ class MihomeCloud extends utils.Adapter {
       try {
         let piid = 0;
         for (const property of service.properties) {
-          piid++;
+          if (property.iid) {
+            piid = property.iid;
+          } else {
+            piid++;
+          }
           const remote = {
             siid: siid,
             piid: piid,
@@ -500,6 +500,73 @@ class MihomeCloud extends utils.Adapter {
             this.specToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + path + "." + typeName;
           }
         }
+        //extract actions
+        let aiid = 0;
+        if (service.actions) {
+          for (const action of service.actions) {
+            if (action.iid) {
+              aiid = action.iid;
+            } else {
+              aiid++;
+            }
+            const remote = {
+              siid: siid,
+              aiid: aiid,
+              did: device.did,
+              model: device.model,
+              name: service.description + " " + action.description,
+              type: action.type,
+              access: action.access,
+            };
+            const typeName = action.type.split(":")[3];
+
+            const path = "remote";
+            const write = true;
+
+            const [type, role] = this.getRole(action.format, write, action["value-range"]);
+            this.log.debug(`Found actions for ${device.model} ${service.description} ${action.description}`);
+
+            await this.setObjectNotExistsAsync(device.did + "." + path, {
+              type: "channel",
+              common: {
+                name: "Remote Controls extracted from Spec definition",
+              },
+              native: {},
+            });
+            const states = {};
+            if (action["value-list"]) {
+              for (const value of action["value-list"]) {
+                states[value.value] = value.description;
+              }
+            }
+
+            this.setObjectNotExists(device.did + "." + path + "." + typeName, {
+              type: "state",
+              common: {
+                name: remote.name || "",
+                type: type,
+                role: role,
+                unit: action.unit ? action.unit : undefined,
+                min: action["value-range"] ? action["value-range"][0] : undefined,
+                max: action["value-range"] ? action["value-range"][1] : undefined,
+                states: action["value-list"] ? states : undefined,
+                write: write,
+                read: true,
+              },
+              native: {
+                siid: siid,
+                aiid: aiid,
+                did: device.did,
+                model: device.model,
+                in: action.in,
+                out: action.out,
+                name: service.description + " " + action.description,
+                type: action.type,
+                access: action.access,
+              },
+            });
+          }
+        }
       } catch (error) {
         this.log.error(error);
         this.log.info(JSON.stringify(service));
@@ -533,6 +600,7 @@ class MihomeCloud extends utils.Adapter {
       })
       .catch((error) => {
         this.log.error(error);
+        this.log.error(error.stack);
         error.response && this.log.error(JSON.stringify(error.response.data));
       });
   }
@@ -682,6 +750,9 @@ class MihomeCloud extends utils.Adapter {
     return { nonce, data_rc, rc4_hash_rc, signature, rc4 };
   }
   getRole(element, write, valueRange) {
+    if (!element) {
+      return ["boolean", "switch"];
+    }
     if (element === "bool" && !write) {
       return ["boolean", "indicator"];
     }
@@ -776,11 +847,7 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.info(
-                `Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(
-                  element.props,
-                )}`,
-              );
+              this.log.info(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
               this.log.info(JSON.stringify(res.data));
               return;
             }
@@ -853,7 +920,7 @@ class MihomeCloud extends utils.Adapter {
               this.log.info(JSON.stringify(res.data));
               return;
             }
-
+            this.log.debug(JSON.stringify(res.data));
             for (const element of res.data.result) {
               const path = this.specToIdDict[device.did][element.siid + "-" + element.piid];
               if (path) {
@@ -994,10 +1061,18 @@ class MihomeCloud extends utils.Adapter {
         if (id.includes(".remote.")) {
           url = "/miotspec/prop/set";
           data = {
-            type: 3,
             accessKey: "IOS00026747c5acafc2",
-            params: [{ did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val }],
           };
+          if (stateObject.native.piid) {
+            data.type = 3;
+            data.params = [{ did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val }];
+          }
+          if (stateObject.native.aiid) {
+            url = "/miotspec/action";
+            data.params = { did: deviceId, siid: stateObject.native.siid, aiid: stateObject.native.aiid };
+
+            // data.params.in = [];
+          }
         }
         this.log.info(JSON.stringify(data));
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
