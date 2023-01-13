@@ -188,8 +188,14 @@ class MihomeCloud extends utils.Adapter {
         this.log.info("Login successful");
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
-        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie(
+          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
+        await this.cookieJar.setCookie(
+          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
+          "https://api.io.mi.com",
+        );
       })
       .catch((error) => {
         this.log.error(error);
@@ -250,7 +256,9 @@ class MihomeCloud extends utils.Adapter {
             try {
               for (const config of configDes) {
                 if (config.models.includes(device.model)) {
-                  this.log.info(`Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `);
+                  this.log.info(
+                    `Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `,
+                  );
                   for (const prop of config.props) {
                     this.log.debug(prop.prop_key);
                   }
@@ -427,7 +435,7 @@ class MihomeCloud extends utils.Adapter {
             common: {
               name: scene.name,
               type: "boolean",
-              role: "boolean",
+              role: "button",
               def: false,
               write: true,
               read: true,
@@ -946,7 +954,11 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.info(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
+              this.log.info(
+                `Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(
+                  element.props,
+                )}`,
+              );
               this.log.info(JSON.stringify(res.data));
               return;
             }
@@ -1172,7 +1184,9 @@ class MihomeCloud extends utils.Adapter {
           };
           if (stateObject.native.piid) {
             data.type = 3;
-            data.params = [{ did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val }];
+            data.params = [
+              { did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val },
+            ];
           }
           if (stateObject.native.aiid) {
             url = "/miotspec/action";
