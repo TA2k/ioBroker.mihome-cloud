@@ -1159,6 +1159,9 @@ class MihomeCloud extends utils.Adapter {
         if (deviceId === "scenes") {
           url = "/scene/start";
           data = { us_id: folder, accessKey: "IOS00026747c5acafc2" };
+          if (typeof state.val !== "boolean") {
+            data["in"] = state.val;
+          }
         }
 
         if (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) {
