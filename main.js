@@ -1159,9 +1159,6 @@ class MihomeCloud extends utils.Adapter {
         if (deviceId === "scenes") {
           url = "/scene/start";
           data = { us_id: folder, accessKey: "IOS00026747c5acafc2" };
-          if (typeof state.val !== "boolean") {
-            data["in"] = state.val;
-          }
         }
 
         if (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) {
@@ -1180,6 +1177,14 @@ class MihomeCloud extends utils.Adapter {
           if (stateObject.native.aiid) {
             url = "/miotspec/action";
             data.params = { did: deviceId, siid: stateObject.native.siid, aiid: stateObject.native.aiid };
+            if (typeof state.val !== "boolean") {
+              try {
+                data.params["in"] = JSON.parse(state.val);
+              } catch (error) {
+                this.log.error(error);
+                return;
+              }
+            }
 
             // data.params.in = [];
           }
