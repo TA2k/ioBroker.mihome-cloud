@@ -39,7 +39,7 @@ Falls unter Remote keine Steuerung möglich ist können Szenen/Smart Szenario an
 
 ## Changelog
 
-### 0.0.2
+### 0.0.3
 
 - (TA2k) initial release
 

@@ -1,6 +1,6 @@
 {
   "name": "iobroker.mihome-cloud",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Adapter for Mi Home Cloud devices",
   "author": {
     "name": "TA2k",
