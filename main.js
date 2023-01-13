@@ -7,7 +7,7 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require("@iobroker/adapter-core");
-const axios = require("axios");
+const axios = require("axios").default;
 const qs = require("qs");
 const Json2iob = require("./lib/json2iob");
 const RC4Crypt = require("./lib/rc4");
@@ -332,7 +332,7 @@ class MihomeCloud extends utils.Adapter {
       accessKey: "IOS00026747c5acafc2",
       latest_req: { plugins: models, app_platform: "IOS", api_version: 10075, package_type: "", region: "zh" },
     };
-    let result = await this.genericRequest(path, data);
+    const result = await this.genericRequest(path, data);
 
     if (result && result.result && result.result.latest_info) {
       for (const plugin of result.result.latest_info) {
@@ -345,12 +345,12 @@ class MihomeCloud extends utils.Adapter {
           .then(async (res) => {
             try {
               const zip = new AdmZip(res.data);
-              var zipEntries = zip.getEntries();
+              const zipEntries = zip.getEntries();
               for (const zipEntry of zipEntries) {
                 if (zipEntry.entryName.includes("main.bundle")) {
                   const bundle = zip.readAsText(zipEntry);
                   const regex = new RegExp("(?<=Method\\(.).*?(?=.,)", "gm");
-                  let matches = bundle.match(regex);
+                  const matches = bundle.match(regex);
                   let filteredMatches = [];
                   if (matches) {
                     filteredMatches = matches.filter((match) => match.length < 35);
@@ -451,9 +451,8 @@ class MihomeCloud extends utils.Adapter {
   }
   async fetchSpecs() {
     this.log.info("Fetching Specs");
-    const path = "/v2/plugin/fetch_plugin";
     // const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
-    let specs = [];
+    const specs = [];
     for (const device of this.deviceArray) {
       // device.spec_type = "urn:miot-spec-v2:device:light:0000A001:yeelink-bslamp1:1";
       specs.push(device.spec_type);
@@ -791,7 +790,7 @@ class MihomeCloud extends utils.Adapter {
       .then(async (res) => {
         try {
           const result = rc4.decode(res.data).replace("&&&START&&&", "");
-          this.log.info("result");
+          this.log.debug(result);
         } catch (error) {
           this.log.error(error);
           return;
@@ -1046,7 +1045,7 @@ class MihomeCloud extends utils.Adapter {
             if (error.response) {
               if (error.response.status === 401) {
                 error.response && this.log.debug(JSON.stringify(error.response.data));
-                this.log.info(element.path + " receive 401 error. Refresh Token in 60 seconds");
+                this.log.info(url + " receive 401 error. Refresh Token in 60 seconds");
                 this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
                 this.refreshTokenTimeout = setTimeout(() => {
                   this.refreshToken();
@@ -1145,8 +1144,9 @@ class MihomeCloud extends utils.Adapter {
         const deviceId = id.split(".")[2];
         const folder = id.split(".")[3];
         let command = id.split(".")[4];
+        // let type;
         if (command) {
-          const type = command.split("-")[1];
+          // type = command.split("-")[1];
           command = command.split("-")[0];
         }
         if (id.split(".")[4] === "Refresh") {
@@ -1156,7 +1156,7 @@ class MihomeCloud extends utils.Adapter {
         //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
 
         const stateObject = await this.getObjectAsync(id);
-        const params = [];
+        let params = [];
         if (stateObject && stateObject.type === "mixed") {
           try {
             params = JSON.parse(state.val);
