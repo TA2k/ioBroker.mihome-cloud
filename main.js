@@ -36,6 +36,7 @@ class MihomeCloud extends utils.Adapter {
     this.remoteCommands = {};
     this.specStatusDict = {};
     this.specToIdDict = {};
+    this.scenes = {};
     this.events = {};
     this.json2iob = new Json2iob(this);
 
@@ -251,7 +252,7 @@ class MihomeCloud extends utils.Adapter {
                 if (config.models.includes(device.model)) {
                   this.log.info(`Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `);
                   for (const prop of config.props) {
-                    this.log.info(prop.prop_key);
+                    this.log.debug(prop.prop_key);
                   }
                 }
               }
@@ -259,47 +260,48 @@ class MihomeCloud extends utils.Adapter {
               this.log.error(error);
             }
           }
+          await this.fetchScenes();
           await this.fetchSpecs();
-          await this.fetchPlugins();
+          // await this.fetchPlugins();
 
           for (const device of this.deviceArray) {
             if (this.specs[device.spec_type]) {
               this.log.debug(JSON.stringify(this.specs[device.spec_type]));
               await this.extractRemotesFromSpec(device);
             }
-            const remoteArray = this.remoteCommands[device.model] || [];
-            for (const remote of remoteArray) {
-              await this.setObjectNotExistsAsync(device.did + ".remotePlugins", {
-                type: "channel",
-                common: {
-                  name: "Remote Controls extracted from Plugin definition",
-                },
-                native: {},
-              });
+            // const remoteArray = this.remoteCommands[device.model] || [];
+            // for (const remote of remoteArray) {
+            //   await this.setObjectNotExistsAsync(device.did + ".remotePlugins", {
+            //     type: "channel",
+            //     common: {
+            //       name: "Remote Controls extracted from Plugin definition",
+            //     },
+            //     native: {},
+            //   });
 
-              let name = remote;
-              let params = "";
-              if (typeof remote === "object") {
-                name = remote.type;
-                params = remote.params;
-              }
-              try {
-                this.setObjectNotExists(device.did + ".remotePlugins." + name, {
-                  type: "state",
-                  common: {
-                    name: name + " " + params || "",
-                    type: params ? "mixed" : "boolean",
-                    role: params ? "state" : "boolean",
-                    def: params ? params : false,
-                    write: true,
-                    read: true,
-                  },
-                  native: {},
-                });
-              } catch (error) {
-                this.log.error(error);
-              }
-            }
+            //   let name = remote;
+            //   let params = "";
+            //   if (typeof remote === "object") {
+            //     name = remote.type;
+            //     params = remote.params;
+            //   }
+            // try {
+            //   this.setObjectNotExists(device.did + ".remotePlugins." + name, {
+            //     type: "state",
+            //     common: {
+            //       name: name + " " + params || "",
+            //       type: params ? "mixed" : "boolean",
+            //       role: params ? "state" : "boolean",
+            //       def: params ? params : false,
+            //       write: true,
+            //       read: true,
+            //     },
+            //     native: {},
+            //   });
+            // } catch (error) {
+            //   this.log.error(error);
+            // }
+            // }
           }
         }
       })
@@ -341,12 +343,14 @@ class MihomeCloud extends utils.Adapter {
                   const bundle = zip.readAsText(zipEntry);
                   const regex = new RegExp("(?<=Method\\(.).*?(?=.,)", "gm");
                   let matches = bundle.match(regex);
-                  const filteredMatches = matches.filter((match) => match.length < 35);
-                  if (filteredMatches.length != matches.length) {
-                    this.log.warn("Remote commmands too long for " + plugin.model);
-                    this.log.warn("Please report this url to the developer: " + plugin.download_url);
+                  let filteredMatches = [];
+                  if (matches) {
+                    filteredMatches = matches.filter((match) => match.length < 35);
+                    if (filteredMatches.length != matches.length) {
+                      this.log.warn("Remote commmands too long for " + plugin.model);
+                      this.log.warn("Please report this url to the developer: " + plugin.download_url);
+                    }
                   }
-
                   const regexCases = new RegExp("case.*:\\n.*type = '(.*)'.*\\n.*params = (.*);", "gm");
                   const matchesCases = bundle.matchAll(regexCases);
 
@@ -362,7 +366,7 @@ class MihomeCloud extends utils.Adapter {
                   if (eventMatches) {
                     this.events[plugin.model] = eventMatches[0].replace(/'/g, "").split(", ");
                   }
-                  this.log.info(`Found ${matches.length} remote commands for ${plugin.model}`);
+                  this.log.info(`Found ${matches && matches.length} remote commands for ${plugin.model}`);
                   this.log.debug(`Remote commands for ${plugin.model}: ${JSON.stringify(matches)}`);
                   const eventLength = this.events[plugin.model] ? this.events[plugin.model].length : 0;
                   this.log.info(`Found ${eventLength} remote events for ${plugin.model}`);
@@ -371,6 +375,7 @@ class MihomeCloud extends utils.Adapter {
               }
             } catch (error) {
               this.log.error(error);
+              this.log.error(error.stack);
               return;
             }
           })
@@ -380,6 +385,61 @@ class MihomeCloud extends utils.Adapter {
           });
       }
     }
+  }
+  async fetchScenes() {
+    this.log.info("Get Scenes");
+    const path = "/scene/list";
+    const data = { st_id: "30", api_version: 5, accessKey: "IOS00026747c5acafc2" };
+    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+    await this.requestClient({
+      method: "post",
+      url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+      headers: this.header,
+      data: qs.stringify({
+        _nonce: nonce,
+        data: data_rc,
+        rc4_hash__: rc4_hash_rc,
+        signature: signature,
+      }),
+    })
+      .then(async (res) => {
+        try {
+          res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
+        } catch (error) {
+          this.log.error(error);
+          return;
+        }
+        this.log.debug(JSON.stringify(res.data));
+        await this.setObjectNotExistsAsync("scenes", {
+          type: "channel",
+          common: {
+            name: "Scenes",
+          },
+          native: {},
+        });
+        for (const sceneKey in res.data.result) {
+          const scene = res.data.result[sceneKey];
+          this.log.info(`Found scene ${scene.name} with id ${scene.us_id}`);
+          this.scenes[scene.us_id] = scene;
+          this.setObjectNotExists("scenes." + scene.us_id, {
+            type: "state",
+            common: {
+              name: scene.name,
+              type: "boolean",
+              role: "boolean",
+              def: false,
+              write: true,
+              read: true,
+            },
+            native: {},
+          });
+        }
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+      });
   }
   async fetchSpecs() {
     this.log.info("Fetching Specs");
@@ -436,7 +496,7 @@ class MihomeCloud extends utils.Adapter {
             piid: piid,
             did: device.did,
             model: device.model,
-            name: service.description + " " + property.description,
+            name: service.description + " " + property.description + " " + property.iid,
             type: property.type,
             access: property.access,
           };
@@ -523,7 +583,7 @@ class MihomeCloud extends utils.Adapter {
             const path = "remote";
             const write = true;
 
-            const [type, role] = this.getRole(action.format, write, action["value-range"]);
+            let [type, role] = this.getRole(action.format, write, action["value-range"]);
             this.log.debug(`Found actions for ${device.model} ${service.description} ${action.description}`);
 
             await this.setObjectNotExistsAsync(device.did + "." + path, {
@@ -539,7 +599,44 @@ class MihomeCloud extends utils.Adapter {
                 states[value.value] = value.description;
               }
             }
+            let def;
+            if (action.in.length) {
+              remote.name = remote.name + " in[";
 
+              for (const inParam of action.in) {
+                type = "string";
+                role = "text";
+                def = action.in;
+                const prop = service.properties.filter((obj) => {
+                  return obj.iid === inParam;
+                });
+                if (prop.length > 0) {
+                  remote.name = remote.name + prop[0].description + "";
+                }
+                if (action.in.indexOf(inParam) !== action.in.length - 1) {
+                  remote.name = remote.name + ",";
+                }
+              }
+
+              remote.name = remote.name + "]";
+            }
+
+            if (action.out.length) {
+              remote.name = remote.name + " out[";
+
+              for (const outParam of action.out) {
+                const prop = service.properties.filter((obj) => {
+                  return obj.iid === outParam;
+                });
+                if (prop.length > 0) {
+                  remote.name = remote.name + prop[0].description;
+                }
+                if (action.out.indexOf(outParam) !== action.out.length - 1) {
+                  remote.name = remote.name + ",";
+                }
+              }
+              remote.name = remote.name + "]";
+            }
             this.setObjectNotExists(device.did + "." + path + "." + typeName, {
               type: "state",
               common: {
@@ -552,6 +649,7 @@ class MihomeCloud extends utils.Adapter {
                 states: action["value-list"] ? states : undefined,
                 write: write,
                 read: true,
+                def: def != null ? def : undefined,
               },
               native: {
                 siid: siid,
@@ -569,6 +667,7 @@ class MihomeCloud extends utils.Adapter {
         }
       } catch (error) {
         this.log.error(error);
+        this.log.error(error.stack);
         this.log.info(JSON.stringify(service));
       }
     }
@@ -794,7 +893,7 @@ class MihomeCloud extends utils.Adapter {
 
     for (const device of this.deviceArray) {
       if (this.remoteCommands[device.model]) {
-        if (!this.remoteCommands[device.model][0].includes("get")) {
+        if (this.remoteCommands[device.model][0] && !this.remoteCommands[device.model][0].includes("get")) {
           continue;
         }
         statusArray = [
@@ -1032,10 +1131,12 @@ class MihomeCloud extends utils.Adapter {
     if (state) {
       if (!state.ack) {
         const deviceId = id.split(".")[2];
+        const folder = id.split(".")[3];
         let command = id.split(".")[4];
-        const type = command.split("-")[1];
-        command = command.split("-")[0];
-
+        if (command) {
+          const type = command.split("-")[1];
+          command = command.split("-")[0];
+        }
         if (id.split(".")[4] === "Refresh") {
           this.updateDevices();
           return;
@@ -1054,7 +1155,13 @@ class MihomeCloud extends utils.Adapter {
         }
         let url = "/v2/device/batchgetdatas";
         let data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
-        if (this.remoteCommands[this.deviceDicts[deviceId].model]) {
+
+        if (deviceId === "scenes") {
+          url = "/scene/start";
+          data = { us_id: folder, accessKey: "IOS00026747c5acafc2" };
+        }
+
+        if (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) {
           url = "/home/rpc/" + deviceId;
           data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: params };
         }

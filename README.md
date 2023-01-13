@@ -21,13 +21,25 @@ Die App Mail und Passwort eingeben.
 
 # Steuerung
 
+mihome-cloud.0.ID.remote
+
+Können Befehle gesendet entweder den State unbestätigt auf true setzen.
+
+Wenn ein Befehl Input erwartet werden die im Namen aufgezählt und als default Wert werden die IDs aufgelistet.
+
+Name und ID findet man unter status. Mögliche Werte findet man auf den Bleistift drückt und dann unter states.
+
+Eingabewerte könnte z.b. `["10",0,1] `
+
+Falls unter Remote keine Steuerung möglich ist können Szenen/Smart Szenario angelegt werden und diese können unter mihome-cloud.0.scenes ausgeführt werden.
+
 ## Diskussion und Fragen
 
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
 
-### 0.0.1
+### 0.0.2
 
 - (TA2k) initial release
 
