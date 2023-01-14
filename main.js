@@ -477,6 +477,10 @@ class MihomeCloud extends utils.Adapter {
   async extractRemotesFromSpec(device) {
     const spec = this.specs[device.spec_type];
     this.log.info(`Extracting remotes from spec for ${device.model} ${spec.description}`);
+    this.log.info(
+      "You can detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" +
+        device.model,
+    );
     let siid = 0;
     this.specStatusDict[device.did] = [];
     this.specToIdDict[device.did] = {};
@@ -1182,13 +1186,13 @@ class MihomeCloud extends utils.Adapter {
           data = {
             accessKey: "IOS00026747c5acafc2",
           };
-          if (stateObject.native.piid) {
+          if (stateObject && stateObject.native.piid) {
             data.type = 3;
             data.params = [
               { did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val },
             ];
           }
-          if (stateObject.native.aiid) {
+          if (stateObject && stateObject.native.aiid) {
             url = "/miotspec/action";
             data.params = { did: deviceId, siid: stateObject.native.siid, aiid: stateObject.native.aiid };
             if (typeof state.val !== "boolean") {
