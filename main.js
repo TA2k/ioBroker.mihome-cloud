@@ -478,11 +478,8 @@ class MihomeCloud extends utils.Adapter {
     const spec = this.specs[device.spec_type];
     this.log.info(`Extracting remotes from spec for ${device.model} ${spec.description}`);
     this.log.info(
-      "You can detailed information about status and remotes here: <a href=http://www.merdok.org/miotspec/?model=" +
-        device.model +
-        ' target="_blank">http://www.merdok.org/miotspec/?model=' +
-        device.model +
-        "</a>",
+      "You can detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" +
+        device.model,
     );
     let siid = 0;
     this.specStatusDict[device.did] = [];
