@@ -733,7 +733,7 @@ class MihomeCloud extends utils.Adapter {
     })
       .then(async (res) => {
         try {
-          this.log.info(rc4.decode(res.data).replace("&&&START&&&", ""));
+          this.log.debug(rc4.decode(res.data).replace("&&&START&&&", ""));
         } catch (error) {
           this.log.error(error);
           return;
@@ -763,7 +763,7 @@ class MihomeCloud extends utils.Adapter {
       .then(async (res) => {
         try {
           const result = rc4.decode(res.data).replace("&&&START&&&", "");
-          this.log.info(result);
+          this.log.debug(result);
           this.home = JSON.parse(result).result;
         } catch (error) {
           this.log.error(error);
@@ -833,8 +833,8 @@ class MihomeCloud extends utils.Adapter {
         try {
           const result = JSON.parse(rc4.decode(res.data)).result;
           for (const device of result.tpl) {
-            this.log.info(device.model);
-            this.log.info(JSON.stringify(device.value.action_list));
+            this.log.debug(device.model);
+            this.log.debug(JSON.stringify(device.value.action_list));
           }
         } catch (error) {
           this.log.error(error);
@@ -957,12 +957,12 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.info(
+              this.log.warn(
                 `Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(
                   element.props,
                 )}`,
               );
-              this.log.info(JSON.stringify(res.data));
+              this.log.warn(JSON.stringify(res.data));
               return;
             }
 
@@ -1030,8 +1030,8 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.info(`Error getting  for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
-              this.log.info(JSON.stringify(res.data));
+              this.log.warn(`Error getting  for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
+              this.log.warn(JSON.stringify(res.data));
               return;
             }
             this.log.debug(JSON.stringify(res.data));
