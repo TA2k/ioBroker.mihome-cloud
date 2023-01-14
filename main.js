@@ -243,7 +243,7 @@ class MihomeCloud extends utils.Adapter {
             this.deviceArray.push(device);
             this.deviceDicts[id] = device;
             const name = device.name;
-
+            this.log.info(`Fetch device ${name} (${id})`);
             await this.setObjectNotExistsAsync(id, {
               type: "device",
               common: {
@@ -478,8 +478,11 @@ class MihomeCloud extends utils.Adapter {
     const spec = this.specs[device.spec_type];
     this.log.info(`Extracting remotes from spec for ${device.model} ${spec.description}`);
     this.log.info(
-      "You can detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" +
-        device.model,
+      "You can detailed information about status and remotes here: <a href=http://www.merdok.org/miotspec/?model=" +
+        device.model +
+        ' target="_blank">http://www.merdok.org/miotspec/?model=' +
+        device.model +
+        "</a>",
     );
     let siid = 0;
     this.specStatusDict[device.did] = [];
