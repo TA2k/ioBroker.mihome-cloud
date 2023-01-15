@@ -1078,6 +1078,10 @@ class MihomeCloud extends utils.Adapter {
       }
     }
     let resultData = res.data.result[did];
+    if (!resultData) {
+      this.log.debug(`No data for ${did} `);
+      return;
+    }
     if (url === "/v2/device/batchgetdatas") {
       resultData = res.data.result[did]["event.status"];
       if (!resultData) {
