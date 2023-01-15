@@ -188,14 +188,8 @@ class MihomeCloud extends utils.Adapter {
         this.log.info("Login successful");
         const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
-        await this.cookieJar.setCookie(
-          "serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
-        await this.cookieJar.setCookie(
-          "userId=" + this.session.userId + "; path=/; domain=api.io.mi.com",
-          "https://api.io.mi.com",
-        );
+        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
       })
       .catch((error) => {
         this.log.error(error);
@@ -256,9 +250,7 @@ class MihomeCloud extends utils.Adapter {
             try {
               for (const config of configDes) {
                 if (config.models.includes(device.model)) {
-                  this.log.info(
-                    `Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `,
-                  );
+                  this.log.info(`Found ${device.model} (${device.name}) in configDes with ${config.props.length} properties `);
                   for (const prop of config.props) {
                     this.log.debug(prop.prop_key);
                   }
@@ -477,10 +469,7 @@ class MihomeCloud extends utils.Adapter {
   async extractRemotesFromSpec(device) {
     const spec = this.specs[device.spec_type];
     this.log.info(`Extracting remotes from spec for ${device.model} ${spec.description}`);
-    this.log.info(
-      "You can detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" +
-        device.model,
-    );
+    this.log.info("You can detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" + device.model);
     let siid = 0;
     this.specStatusDict[device.did] = [];
     this.specToIdDict[device.did] = {};
@@ -519,6 +508,7 @@ class MihomeCloud extends utils.Adapter {
             path = "remote";
             write = true;
           }
+
           const [type, role] = this.getRole(property.format, write, property["value-range"]);
           this.log.debug(`Found remote for ${device.model} ${service.description} ${property.description}`);
 
@@ -535,14 +525,17 @@ class MihomeCloud extends utils.Adapter {
               states[value.value] = value.description;
             }
           }
-
-          this.setObjectNotExists(device.did + "." + path + "." + typeName, {
+          let unit;
+          if (property.unit && property.unit !== "none") {
+            unit = property.unit;
+          }
+          await this.extendObjectAsync(device.did + "." + path + "." + typeName, {
             type: "state",
             common: {
               name: remote.name || "",
               type: type,
               role: role,
-              unit: property.unit ? property.unit : undefined,
+              unit: unit,
               min: property["value-range"] ? property["value-range"][0] : undefined,
               max: property["value-range"] ? property["value-range"][1] : undefined,
               states: property["value-list"] ? states : undefined,
@@ -597,7 +590,7 @@ class MihomeCloud extends utils.Adapter {
             let [type, role] = this.getRole(action.format, write, action["value-range"]);
             this.log.debug(`Found actions for ${device.model} ${service.description} ${action.description}`);
 
-            await this.setObjectNotExistsAsync(device.did + "." + path, {
+            await this.extendObjectAsync(device.did + "." + path, {
               type: "channel",
               common: {
                 name: "Remote Controls extracted from Spec definition",
@@ -648,13 +641,17 @@ class MihomeCloud extends utils.Adapter {
               }
               remote.name = remote.name + "]";
             }
+            let unit;
+            if (action.unit && action.unit !== "none") {
+              unit = action.unit;
+            }
             this.setObjectNotExists(device.did + "." + path + "." + typeName, {
               type: "state",
               common: {
                 name: remote.name || "",
                 type: type,
                 role: role,
-                unit: action.unit ? action.unit : undefined,
+                unit: unit,
                 min: action["value-range"] ? action["value-range"][0] : undefined,
                 max: action["value-range"] ? action["value-range"][1] : undefined,
                 states: action["value-list"] ? states : undefined,
@@ -869,10 +866,10 @@ class MihomeCloud extends utils.Adapter {
     if (element === "bool" && write) {
       return ["boolean", "switch"];
     }
-    if ((element.indexOf("uint") !== -1 || valueRange) && !write) {
+    if ((element.indexOf("int") !== -1 || valueRange) && !write) {
       return ["number", "value"];
     }
-    if ((element.indexOf("uint") !== -1 || valueRange) && write) {
+    if ((element.indexOf("int") !== -1 || valueRange) && write) {
       return ["number", "level"];
     }
 
@@ -957,11 +954,7 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.warn(
-                `Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(
-                  element.props,
-                )}`,
-              );
+              this.log.warn(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
               this.log.warn(JSON.stringify(res.data));
               return;
             }
@@ -1192,9 +1185,7 @@ class MihomeCloud extends utils.Adapter {
           };
           if (stateObject && stateObject.native.piid) {
             data.type = 3;
-            data.params = [
-              { did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val },
-            ];
+            data.params = [{ did: deviceId, siid: stateObject.native.siid, piid: stateObject.native.piid, value: state.val }];
           }
           if (stateObject && stateObject.native.aiid) {
             url = "/miotspec/action";
