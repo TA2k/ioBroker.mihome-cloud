@@ -33,6 +33,65 @@ Eingabewerte könnte z.b. `["10",0,1] `
 
 Falls unter Remote keine Steuerung möglich ist können Szenen/Smart Szenario angelegt werden und diese können unter mihome-cloud.0.scenes ausgeführt werden.
 
+Bsp: Saugroboter Raumreinigung
+
+mihome-cloud.0.id.remote.set-room-clean benötigt als Input
+sweep set-room-clean 7-3 in[clean-room-ids,clean-room-mode,clean-room-oper] [24,25,26]
+
+Potenziel findet man Room Ids unter:
+
+mihome-cloud.0.id.remote.get-map-room-list
+
+mihome-cloud.0.id.remote.get-preference-ii
+
+beide benötigen
+[clean-current-map] [33] als Input
+
+mihome-cloud.0.id.status.clean-current-map sweep clean-current-map 7-33
+
+ist leider null
+Man kann alternativ
+
+mihome-cloud.0.id.status.cur-map-id
+
+nutzen oder
+
+mihome-cloud.0.id.remote.get-map-list map get-map-list 10-1 out[map-list]
+die Kartenliste abfragen und sieht das result unter unter mihome-cloud.0.id.status.map-list map map-list 10-4
+
+Diese Id kann man dann setzen
+
+mihome-cloud.0.id.remote.get-map-room-list map get-map-room-list 10-13 in[cur-map-id] out[room-id-name-list]
+
+mihome-cloud.0.id.remote.get-preference-ii sweep get-preference-ii 7-10 in[clean-current-map] out[clean-preference,clean-prefer-on,clean-preference-ii,clean-prefer-on-ii]
+
+Format: [1673811000]
+
+Dann erhält man die Informationen unter:
+
+mihome-cloud.0.id.status.room-id-name-list: [{"name":"room1","id":10}]
+
+oder
+
+mihome-cloud.0.id.status.clean-preference ["1_10_0_1_0_0_1","1_11_0_0_0_0_1","1_12_1_1_2_0_1","1_13_0_0_0_0_1"]
+
+mihome-cloud.0.id.status.clean-prefer-on
+
+mihome-cloud.0.id.status.clean-preference-ii
+
+mihome-cloud.0.id.status.clean-prefer-on-ii
+
+Mit den Informationen kann man dann
+
+mihome-cloud.0.id.remote.start-room-sweep
+Format ["10","11","12","13"]
+
+oder
+
+mihome-cloud.0.id.remote.set-room-clean
+
+Format ["10",0,1]
+
 ## Diskussion und Fragen
 
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
