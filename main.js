@@ -35,7 +35,8 @@ class MihomeCloud extends utils.Adapter {
     this.deviceId = this.randomString(40);
     this.remoteCommands = {};
     this.specStatusDict = {};
-    this.specToIdDict = {};
+    this.specPropsToIdDict = {};
+    this.specActiosnToIdDict = {};
     this.scenes = {};
     this.events = {};
     this.json2iob = new Json2iob(this);
@@ -472,7 +473,9 @@ class MihomeCloud extends utils.Adapter {
     this.log.info("You can detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" + device.model);
     let siid = 0;
     this.specStatusDict[device.did] = [];
-    this.specToIdDict[device.did] = {};
+
+    this.specActiosnToIdDict[device.did] = {};
+    this.specPropsToIdDict[device.did] = {};
     for (const service of spec.services) {
       if (service.iid) {
         siid = service.iid;
@@ -496,7 +499,7 @@ class MihomeCloud extends utils.Adapter {
             piid: piid,
             did: device.did,
             model: device.model,
-            name: service.description + " " + property.description + " " + property.iid,
+            name: service.description + " " + property.description + " " + service.iid + "-" + property.iid,
             type: property.type,
             access: property.access,
           };
@@ -561,8 +564,8 @@ class MihomeCloud extends utils.Adapter {
               piid: remote.piid,
               updateTime: 0,
             });
-            this.specToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + path + "." + typeName;
           }
+          this.specPropsToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + path + "." + typeName;
         }
         //extract actions
         let aiid = 0;
@@ -578,7 +581,7 @@ class MihomeCloud extends utils.Adapter {
               aiid: aiid,
               did: device.did,
               model: device.model,
-              name: service.description + " " + action.description,
+              name: service.description + " " + action.description + " " + service.iid + "-" + action.iid,
               type: action.type,
               access: action.access,
             };
@@ -610,7 +613,7 @@ class MihomeCloud extends utils.Adapter {
               for (const inParam of action.in) {
                 type = "string";
                 role = "text";
-                def = action.in;
+                def = JSON.stringify(action.in);
                 const prop = service.properties.filter((obj) => {
                   return obj.iid === inParam;
                 });
@@ -671,6 +674,7 @@ class MihomeCloud extends utils.Adapter {
                 access: action.access,
               },
             });
+            this.specActiosnToIdDict[device.did][service.iid + "-" + action.iid] = device.did + "." + path + "." + typeName;
           }
         }
       } catch (error) {
@@ -1029,7 +1033,7 @@ class MihomeCloud extends utils.Adapter {
             }
             this.log.debug(JSON.stringify(res.data));
             for (const element of res.data.result) {
-              const path = this.specToIdDict[device.did][element.siid + "-" + element.piid];
+              const path = this.specPropsToIdDict[device.did][element.siid + "-" + element.piid];
               if (path) {
                 this.log.debug(`Set ${path} to ${element.value}`);
                 if (element.value != null) {
@@ -1231,6 +1235,23 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             this.log.info(JSON.stringify(res.data));
+            const result = res.data.result;
+            if (result.out) {
+              const path = this.specActiosnToIdDict[result.did][result.siid + "-" + result.aiid];
+              this.log.debug(path);
+              const stateObject = await this.getObjectAsync(path);
+              if (stateObject && stateObject.native.out) {
+                const out = stateObject.native.out;
+                for (const outItem of out) {
+                  const index = out.indexOf(outItem);
+                  const outPath = this.specPropsToIdDict[result.did][result.siid + "-" + outItem];
+                  await this.setStateAsync(outPath, result.out[index], true);
+                  this.log.info("Set " + outPath + " to " + result.out[index]);
+                }
+              } else {
+                this.log.info(JSON.stringify(result.out));
+              }
+            }
           })
           .catch(async (error) => {
             this.log.error(error);
