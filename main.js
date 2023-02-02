@@ -993,6 +993,11 @@ class MihomeCloud extends utils.Adapter {
                 return;
               }
             }
+            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
+              this.log.debug(error);
+              return;
+            }
+
             this.log.error(element.url);
             this.log.error(error);
             error.stack && this.log.error(error.stack);
@@ -1027,7 +1032,7 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.warn(`Error getting  for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
+              this.log.warn(`Error getting spec update for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
               this.log.warn(JSON.stringify(res.data));
               return;
             }
