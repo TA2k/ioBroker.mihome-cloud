@@ -1032,8 +1032,8 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.warn(`Error getting spec update for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
-              this.log.warn(JSON.stringify(res.data));
+              this.log.debug(`Error getting spec update for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
+              this.log.debug(JSON.stringify(res.data));
               return;
             }
             this.log.debug(JSON.stringify(res.data));
