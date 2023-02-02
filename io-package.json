@@ -1,8 +1,20 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "news": {
+      "0.0.5": {
+        "en": "added support for actions",
+        "de": "Unterstützung für Aktionen hinzugefügt",
+        "ru": "добавлена поддержка действий",
+        "pt": "adicionado suporte para ações",
+        "nl": "ondersteuning voor acties toegevoegd",
+        "fr": "ajout de la prise en charge des actions",
+        "it": "aggiunto supporto per le azioni",
+        "es": "se agregó soporte para acciones",
+        "pl": "dodano obsługę akcji",
+        "zh-cn": "添加了对动作的支持"
+      },
       "0.0.4": {
         "en": "initial release",
         "de": "Erstveröffentlichung",
