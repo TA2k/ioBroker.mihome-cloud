@@ -486,6 +486,11 @@ class MihomeCloud extends utils.Adapter {
       if (typeArray[3] === "device-information") {
         continue;
       }
+      if (!service.properties) {
+        this.log.warn(`No properties for ${device.model} ${service.description} cannot extract information`);
+        continue;
+      }
+
       try {
         let piid = 0;
         for (const property of service.properties) {
@@ -678,6 +683,7 @@ class MihomeCloud extends utils.Adapter {
           }
         }
       } catch (error) {
+        this.log.error("Error while extracting spec for " + device.model);
         this.log.error(error);
         this.log.error(error.stack);
         this.log.info(JSON.stringify(service));
@@ -958,6 +964,10 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
+              if (res.data.code === -8) {
+                this.log.debug(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
+                return;
+              }
               this.log.warn(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
               this.log.warn(JSON.stringify(res.data));
               return;
@@ -1032,7 +1042,13 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             if (res.data.code !== 0) {
-              this.log.debug(`Error getting spec update for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
+              if (res.data.code === -8) {
+                this.log.debug(`Error getting spec update for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
+
+                this.log.debug(JSON.stringify(res.data));
+                return;
+              }
+              this.log.info(`Error getting spec update for ${device.name} (${device.did}) with ${JSON.stringify(data)}`);
               this.log.debug(JSON.stringify(res.data));
               return;
             }
