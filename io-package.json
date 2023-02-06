@@ -64,7 +64,7 @@
     "readme": "https://github.com/TA2k/ioBroker.mihome-cloud/blob/main/README.md",
     "loglevel": "info",
     "mode": "daemon",
-    "type": "it-systems",
+    "type": "iot-systems",
     "compact": true,
     "connectionType": "cloud",
     "dataSource": "poll",
