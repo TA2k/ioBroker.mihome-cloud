@@ -98,6 +98,10 @@ Format ["10",0,1]
 
 ## Changelog
 
+### 0.0.5
+
+- (TA2k) Bugfixes
+
 ### 0.0.3
 
 - (TA2k) initial release
