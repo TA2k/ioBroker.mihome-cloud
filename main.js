@@ -263,46 +263,58 @@ class MihomeCloud extends utils.Adapter {
           }
           await this.fetchScenes();
           await this.fetchSpecs();
-          // await this.fetchPlugins();
+          await this.fetchPlugins();
 
           for (const device of this.deviceArray) {
             if (this.specs[device.spec_type]) {
               this.log.debug(JSON.stringify(this.specs[device.spec_type]));
               await this.extractRemotesFromSpec(device);
             }
-            // const remoteArray = this.remoteCommands[device.model] || [];
-            // for (const remote of remoteArray) {
-            //   await this.setObjectNotExistsAsync(device.did + ".remotePlugins", {
-            //     type: "channel",
-            //     common: {
-            //       name: "Remote Controls extracted from Plugin definition",
-            //     },
-            //     native: {},
-            //   });
-
-            //   let name = remote;
-            //   let params = "";
-            //   if (typeof remote === "object") {
-            //     name = remote.type;
-            //     params = remote.params;
-            //   }
-            // try {
-            //   this.setObjectNotExists(device.did + ".remotePlugins." + name, {
-            //     type: "state",
-            //     common: {
-            //       name: name + " " + params || "",
-            //       type: params ? "mixed" : "boolean",
-            //       role: params ? "state" : "boolean",
-            //       def: params ? params : false,
-            //       write: true,
-            //       read: true,
-            //     },
-            //     native: {},
-            //   });
-            // } catch (error) {
-            //   this.log.error(error);
-            // }
-            // }
+            const remoteArray = this.remoteCommands[device.model] || [];
+            for (const remote of remoteArray) {
+              await this.setObjectNotExistsAsync(device.did + ".remotePlugins", {
+                type: "channel",
+                common: {
+                  name: "Remote Controls extracted from Plugin definition",
+                  desc: "Not so reliable alternative remotes",
+                },
+                native: {},
+              });
+              this.setObjectNotExists(device.did + ".remotePlugins.customCommand", {
+                type: "state",
+                common: {
+                  name: "Send Custom command via Plugin",
+                  type: "mixed",
+                  role: "state",
+                  def: "set_level_favorite,16",
+                  write: true,
+                  read: true,
+                },
+                native: {},
+              });
+              let name = remote;
+              let params = "";
+              if (typeof remote === "object") {
+                name = remote.type;
+                params = remote.params;
+              }
+              try {
+                this.setObjectNotExists(device.did + ".remotePlugins." + name, {
+                  type: "state",
+                  common: {
+                    name: name + " " + params || "",
+                    type: "mixed",
+                    role: "state",
+                    def: false,
+                    write: true,
+                    read: true,
+                  },
+                  native: {},
+                });
+              } catch (error) {
+                this.log.error(error);
+              }
+            }
           }
         }
       })
@@ -1176,19 +1188,18 @@ class MihomeCloud extends utils.Adapter {
           command = command.split("-")[0];
         }
         if (id.split(".")[4] === "Refresh") {
-          this.updateDevices();
+          this.updateDevicesViaSpec();
           return;
         }
         //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
 
         const stateObject = await this.getObjectAsync(id);
         let params = [];
-        if (stateObject && stateObject.type === "mixed") {
+        if (stateObject && stateObject.common.type === "mixed") {
           try {
             params = JSON.parse(state.val);
           } catch (error) {
-            this.log.error(error);
-            return;
+            this.log.debug(error);
           }
         }
         let url = "/v2/device/batchgetdatas";
@@ -1199,9 +1210,19 @@ class MihomeCloud extends utils.Adapter {
           data = { us_id: folder, accessKey: "IOS00026747c5acafc2" };
         }
 
-        if (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) {
+        if ((this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) || id.includes("remotePlugins.customCommand")) {
           url = "/home/rpc/" + deviceId;
-          data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: params };
+          params = state.val;
+          if (id.includes("remotePlugins.customCommand")) {
+            const stateArray = state.val.replace(/ /g, "").split(",");
+            command = stateArray[0];
+            params = stateArray[1];
+          }
+          try {
+            data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: `[${params}]` };
+          } catch (error) {
+            this.log.error(error);
+          }
         }
         if (id.includes(".remote.")) {
           url = "/miotspec/prop/set";
@@ -1243,6 +1264,7 @@ class MihomeCloud extends utils.Adapter {
           .then(async (res) => {
             try {
               res.data = JSON.parse(rc4.decode(res.data));
+              this.log.debug(JSON.stringify(res.data));
             } catch (error) {
               this.log.error(error);
               return;
@@ -1256,6 +1278,9 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             this.log.info(JSON.stringify(res.data));
+            if (!res.data.result) {
+              return;
+            }
             const result = res.data.result;
             if (result.out) {
               const path = this.specActiosnToIdDict[result.did][result.siid + "-" + result.aiid];
