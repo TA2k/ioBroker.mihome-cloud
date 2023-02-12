@@ -14,6 +14,86 @@
 ## mihome-cloud adapter for ioBroker
 
 Adapter for Mi Home Cloud devices
+# Login procedure
+
+Enter the app mail and password.
+
+# Control
+
+mihome-cloud.0.ID.remote
+
+Can send commands either set the state unconfirmed to true.
+
+If a command expects input those are listed in the name and as default value the IDs are listed.
+
+Name and ID can be found under status. Possible values can be found by pressing the pencil and then under states.
+
+Input values could be e.g. `["10",0,1] `
+
+If no control is possible under remote, scenes/smart scenarios can be created and executed under mihome-cloud.0.scenes.
+
+Example: Robot vacuum cleaner room cleaning
+
+mihome-cloud.0.id.remote.set-room-clean needs as input
+sweep set-room-clean 7-3 in[clean-room-ids,clean-room-mode,clean-room-oper] [24,25,26].
+
+Potentially, room ids can be found at:
+
+mihome-cloud.0.id.remote.get-map-room-list
+
+mihome-cloud.0.id.remote.get-preference-ii
+
+both require
+[clean-current-map] [33] as input
+
+mihome-cloud.0.id.status.clean-current-map sweep clean-current-map 7-33
+
+is unfortunately null
+You can alternatively use
+
+mihome-cloud.0.id.status.cur-map-id
+
+or
+
+mihome-cloud.0.id.remote.get-map-list map get-map-list 10-1 out[map-list]
+query the map list and see the result under mihome-cloud.0.id.status.map-list map map-list 10-4
+
+You can then set this id
+
+mihome-cloud.0.id.remote.get-map-room-list map get-map-room-list 10-13 in[cur-map-id] out[room-id-name-list]
+
+mihome-cloud.0.id.remote.get-preference-ii sweep get-preference-ii 7-10 in[clean-current-map] out[clean-preference,clean-prefer-on,clean-preference-ii,clean-prefer-on-ii]
+
+Format: [1673811000]
+
+Then you get the information under:
+
+mihome-cloud.0.id.status.room-id-name-list: [{"name":"room1","id":10}]
+
+or
+
+mihome-cloud.0.id.status.clean-preference ["1_10_0_1_0_0_1","1_11_0_0_0_0_1","1_12_1_1_2_0_1","1_13_0_0_0_0_1"]
+
+mihome-cloud.0.id.status.clean-prefer-on
+
+mihome-cloud.0.id.status.clean-preference-ii
+
+mihome-cloud.0.id.status.clean-prefer-on-ii
+
+With the information you can then use
+
+mihome-cloud.0.id.remote.start-room-sweep
+format ["10", "11", "12", "13"]
+
+or
+
+mihome-cloud.0.id.remote.set-room-clean
+
+Format ["10",0,1]
+
+## Discussion and questions
+
+<https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 # Loginablauf
 
