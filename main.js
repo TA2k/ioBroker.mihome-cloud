@@ -1223,7 +1223,7 @@ class MihomeCloud extends utils.Adapter {
             params = stateArray[1];
           }
           try {
-            data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: `[${params}]` };
+            data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: JSON.parse(`[${params}]`) };
           } catch (error) {
             this.log.error(error);
           }
