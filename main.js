@@ -1274,13 +1274,14 @@ class MihomeCloud extends utils.Adapter {
               this.log.error(error);
               return;
             }
-            if (res.data.result && res.data.result.length > 0) {
-              res.data = res.data.result[0];
-            }
+
             if (res.data.code !== 0) {
               this.log.error("Error setting device state");
               this.log.error(JSON.stringify(res.data));
               return;
+            }
+            if (res.data.result && res.data.result.length > 0) {
+              res.data = res.data.result[0];
             }
             this.log.info(JSON.stringify(res.data));
             if (!res.data.result) {
