@@ -1182,6 +1182,7 @@ class MihomeCloud extends utils.Adapter {
         const deviceId = id.split(".")[2];
         const folder = id.split(".")[3];
         let command = id.split(".")[4];
+        this.log.debug(`Receive command ${command} for ${deviceId} in folder ${folder} with value ${state.val} `);
         // let type;
         if (command) {
           // type = command.split("-")[1];
@@ -1209,8 +1210,11 @@ class MihomeCloud extends utils.Adapter {
           url = "/scene/start";
           data = { us_id: folder, accessKey: "IOS00026747c5acafc2" };
         }
-
-        if ((this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) || id.includes("remotePlugins.customCommand")) {
+        this.log.debug(`Search for ${deviceId} in ${JSON.stringify(this.deviceDicts)}`);
+        if (
+          (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) ||
+          id.includes("remotePlugins.customCommand")
+        ) {
           url = "/home/rpc/" + deviceId;
           params = state.val;
           if (id.includes("remotePlugins.customCommand")) {
@@ -1223,6 +1227,7 @@ class MihomeCloud extends utils.Adapter {
           } catch (error) {
             this.log.error(error);
           }
+          this.log.debug(`Send remote plugin command ${JSON.stringify(data)} to ${deviceId}`);
         }
         if (id.includes(".remote.")) {
           url = "/miotspec/prop/set";
@@ -1248,7 +1253,7 @@ class MihomeCloud extends utils.Adapter {
             // data.params.in = [];
           }
         }
-        this.log.info(JSON.stringify(data));
+        this.log.info(`Send: ${JSON.stringify(data)} to ${deviceId} via ${url}`);
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
         await this.requestClient({
           method: "post",
