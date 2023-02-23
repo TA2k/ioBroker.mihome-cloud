@@ -133,6 +133,11 @@ class MihomeCloud extends utils.Adapter {
         error.response && this.log.error(JSON.stringify(error.response.data));
         return {};
       });
+    if (firstStep && firstStep.ssecurity) {
+      this.session.ssecurity = firstStep.ssecurity;
+      this.session.psecurity = firstStep.psecurity;
+      return;
+    }
     if (!firstStep || !firstStep._sign) {
       this.log.error("No sign in first step");
       return;
