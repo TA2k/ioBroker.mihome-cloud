@@ -134,50 +134,49 @@ class MihomeCloud extends utils.Adapter {
         return {};
       });
     if (firstStep && firstStep.ssecurity) {
-      this.session.ssecurity = firstStep.ssecurity;
-      this.session.psecurity = firstStep.psecurity;
-      return;
-    }
-    if (!firstStep || !firstStep._sign) {
-      this.log.error("No sign in first step");
-      return;
-    }
-    await this.requestClient({
-      method: "post",
-      url: "https://account.xiaomi.com/pass/serviceLoginAuth2",
-      headers: {
-        Host: "account.xiaomi.com",
-        Accept: "*/*",
-        "User-Agent": "APP/com.xiaomi.mihome APPV/7.12.202 iosPassportSDK/4.2.14 iOS/14.8 miHSTS",
-        "Accept-Language": "de-de",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      data: qs.stringify({
-        _json: "true",
-        hash: crypto.createHash("md5").update(this.config.password).digest("hex").toUpperCase(),
-        sid: "xiaomiio",
-        callback: "https://sts.api.io.mi.com/sts",
-        _sign: firstStep._sign,
-        qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
-        user: this.config.username,
-      }),
-    })
-      .then((res) => {
-        this.log.debug(JSON.stringify(res.data));
-        if (res.data.indexOf("&&&START&&&") === 0) {
-          const data = res.data.replace("&&&START&&&", "");
-          this.session = JSON.parse(data);
-        }
-        return {};
+      this.session = firstStep;
+    } else {
+      if (!firstStep || !firstStep._sign) {
+        this.log.error("No sign in first step");
+        return;
+      }
+      await this.requestClient({
+        method: "post",
+        url: "https://account.xiaomi.com/pass/serviceLoginAuth2",
+        headers: {
+          Host: "account.xiaomi.com",
+          Accept: "*/*",
+          "User-Agent": "APP/com.xiaomi.mihome APPV/7.12.202 iosPassportSDK/4.2.14 iOS/14.8 miHSTS",
+          "Accept-Language": "de-de",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        data: qs.stringify({
+          _json: "true",
+          hash: crypto.createHash("md5").update(this.config.password).digest("hex").toUpperCase(),
+          sid: "xiaomiio",
+          callback: "https://sts.api.io.mi.com/sts",
+          _sign: firstStep._sign,
+          qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
+          user: this.config.username,
+        }),
       })
-      .catch((error) => {
-        this.log.error(error);
-        error.response && this.log.error(JSON.stringify(error.response.data));
-      });
+        .then((res) => {
+          this.log.debug(JSON.stringify(res.data));
+          if (res.data.indexOf("&&&START&&&") === 0) {
+            const data = res.data.replace("&&&START&&&", "");
+            this.session = JSON.parse(data);
+          }
+          return {};
+        })
+        .catch((error) => {
+          this.log.error(error);
+          error.response && this.log.error(JSON.stringify(error.response.data));
+        });
 
-    if (!this.session.ssecurity) {
-      this.log.error("Login failed");
-      return;
+      if (!this.session.ssecurity) {
+        this.log.error("Login failed");
+        return;
+      }
     }
     await this.requestClient({
       method: "get",
