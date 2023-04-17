@@ -829,7 +829,8 @@ class MihomeCloud extends utils.Adapter {
       });
   }
   async getActions() {
-    if (this.home.homelist.length === 0) {
+    if (!this.home || this.home.homelist.length === 0) {
+      this.log.error("No home found");
       return;
     }
     const path = "/scene/tplv2";
@@ -1144,6 +1145,10 @@ class MihomeCloud extends utils.Adapter {
   }
 
   signedNonce(ssecret, nonce) {
+    if (!ssecret || !nonce) {
+      this.log.warn("No ssecret or nonce provided please check login");
+      return "";
+    }
     const s = Buffer.from(ssecret, "base64");
     const n = Buffer.from(nonce, "base64");
     return crypto.createHash("sha256").update(s).update(n).digest("base64");
