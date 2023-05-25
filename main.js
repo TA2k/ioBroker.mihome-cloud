@@ -1044,6 +1044,7 @@ class MihomeCloud extends utils.Adapter {
           method: "post",
           url: "https://" + this.config.region + "api.io.mi.com/app" + url,
           headers: this.header,
+          timeout: 30000,
           data: qs.stringify({
             _nonce: nonce,
             data: data_rc,
@@ -1092,6 +1093,10 @@ class MihomeCloud extends utils.Adapter {
 
                 return;
               }
+            }
+            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
+              this.log.debug(error);
+              return;
             }
             this.log.error(url);
             this.log.error(error);
