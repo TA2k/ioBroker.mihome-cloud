@@ -1092,15 +1092,17 @@ class MihomeCloud extends utils.Adapter {
 
                 return;
               }
-            }
-            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
-              this.log.debug(error);
+
+              this.log.error(url);
+              this.log.error(error);
+              error.stack && this.log.error(error.stack);
+              error.response && this.log.error(JSON.stringify(error.response.data));
               return;
             }
-            this.log.error(url);
-            this.log.error(error);
-            error.stack && this.log.error(error.stack);
-            error.response && this.log.error(JSON.stringify(error.response.data));
+
+            this.log.debug(error);
+            this.log.debug(url);
+            this.log.debug(JSON.stringify(error));
           });
       }
     }
