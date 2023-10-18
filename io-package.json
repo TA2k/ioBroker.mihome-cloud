@@ -1,8 +1,12 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "news": {
+      "0.1.1": {
+        "en": "Bugfixes",
+        "de": "Fehlerbehebungen"
+      },
       "0.1.0": {
         "en": "Fix refresh token",
         "de": "Refresh Token reparieren"
