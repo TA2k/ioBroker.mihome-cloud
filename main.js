@@ -99,14 +99,20 @@ class MihomeCloud extends utils.Adapter {
       await this.listLocal();
       await this.getHome();
       await this.getActions();
-      this.updateInterval = setInterval(async () => {
-        await this.updateDevicesViaSpec();
-        await this.updateDevices();
-      }, this.config.interval * 60 * 1000);
+      this.updateInterval = setInterval(
+        async () => {
+          await this.updateDevicesViaSpec();
+          await this.updateDevices();
+        },
+        this.config.interval * 60 * 1000,
+      );
     }
-    this.refreshTokenInterval = setInterval(() => {
-      this.refreshToken();
-    }, 12 * 60 * 60 * 1000);
+    this.refreshTokenInterval = setInterval(
+      () => {
+        this.refreshToken();
+      },
+      12 * 60 * 60 * 1000,
+    );
   }
   async login() {
     const firstStep = await this.requestClient({
@@ -1093,10 +1099,10 @@ class MihomeCloud extends utils.Adapter {
                 return;
               }
 
-              this.log.error(url);
-              this.log.error(error);
-              error.stack && this.log.error(error.stack);
-              error.response && this.log.error(JSON.stringify(error.response.data));
+              this.log.debug(url);
+              this.log.debug(error);
+              error.stack && this.log.debug(error.stack);
+              error.response && this.log.debug(JSON.stringify(error.response.data));
               return;
             }
 
