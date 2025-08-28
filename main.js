@@ -50,6 +50,9 @@ class MihomeCloud extends utils.Adapter {
         },
       }),
     });
+
+    // Cookie and session persistence via ioBroker state
+    this.cookieStateId = "auth.session";
   }
 
   /**
@@ -79,8 +82,8 @@ class MihomeCloud extends utils.Adapter {
         this.local +
         "_deviceId=" +
         this.deviceId +
-        "&_appVersion=7.12.202&_platform=1&_platformVersion=14.8",
-      "user-agent": "iOS-14.8-7.12.202-iPhone10,5--" + this.deviceId + "-iPhone",
+        "&_appVersion=10.5.201&_platform=1&_platformVersion=14.8",
+      "user-agent": "APP/com.xiaomi.mihome APPV/10.5.201",
     };
     this.config.region = this.config.region === "cn" ? "" : this.config.region + ".";
     this.updateInterval = null;
@@ -89,8 +92,22 @@ class MihomeCloud extends utils.Adapter {
     this.session = {};
     this.subscribeStates("*");
 
-    this.log.info("Login to MiHome Cloud");
-    await this.login();
+    // Try to load saved cookies first
+    this.log.info("Attempting to load saved cookies...");
+    const cookiesLoaded = await this.loadCookies();
+
+    if (cookiesLoaded) {
+      this.log.info("Cookies loaded, attempting to resume session...");
+      // Try to resume session - if it fails, perform fresh login
+      const sessionResumed = await this.resumeSession();
+      if (!sessionResumed) {
+        this.log.info("Session resumption failed, performing fresh login...");
+        await this.login();
+      }
+    } else {
+      this.log.info("No saved cookies found, performing fresh login...");
+      await this.login();
+    }
 
     if (this.session.ssecurity) {
       await this.getDeviceList();
@@ -115,19 +132,44 @@ class MihomeCloud extends utils.Adapter {
     );
   }
   async login() {
-    const firstStep = await this.requestClient({
+    // Set essential cookies for authentication
+    await this.cookieJar.setCookie("sdkVersion=accountsdk-18.8.15; path=/; domain=mi.com", "https://mi.com");
+    await this.cookieJar.setCookie("sdkVersion=accountsdk-18.8.15; path=/; domain=xiaomi.com", "https://xiaomi.com");
+    await this.cookieJar.setCookie("deviceId=" + this.deviceId + "; path=/; domain=mi.com", "https://mi.com");
+    await this.cookieJar.setCookie("deviceId=" + this.deviceId + "; path=/; domain=xiaomi.com", "https://xiaomi.com");
+
+    if (await this.loginStep1()) {
+      if (await this.loginStep2()) {
+        if (await this.loginStep3()) {
+          return true;
+        } else {
+          this.log.error("Unable to get service token");
+        }
+      } else {
+        this.log.error("Invalid login or password");
+      }
+    } else {
+      this.log.error("Invalid username");
+    }
+    return false;
+  }
+
+  async loginStep1() {
+    this.log.debug("Login Step 1");
+    const url = "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true";
+    const headers = {
+      "User-Agent": "APP/com.xiaomi.mihome APPV/10.5.201",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: `userId=${this.config.username}; sdkVersion=accountsdk-18.8.15; deviceId=${this.deviceId};`,
+    };
+
+    const response = await this.requestClient({
       method: "get",
-      url: "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true",
-      headers: {
-        Host: "account.xiaomi.com",
-        Accept: "*/*",
-        "User-Agent": "APP/com.xiaomi.mihome APPV/7.12.202 iosPassportSDK/4.2.14 iOS/14.8 miHSTS",
-        "Accept-Language": "de-de",
-        Cookie: "uLocale=de_DE; pass_ua=web",
-      },
+      url: url,
+      headers: headers,
     })
       .then((res) => {
-        this.log.debug(JSON.stringify(res.data));
+        this.log.debug("&&&START&&&" + JSON.stringify(res.data));
         if (res.data.indexOf("&&&START&&&") === 0) {
           const data = res.data.replace("&&&START&&&", "");
           return JSON.parse(data);
@@ -139,73 +181,177 @@ class MihomeCloud extends utils.Adapter {
         error.response && this.log.error(JSON.stringify(error.response.data));
         return {};
       });
-    if (firstStep && firstStep.ssecurity) {
-      this.session = firstStep;
-    } else {
-      if (!firstStep || !firstStep._sign) {
-        this.log.error("No sign in first step");
-        return;
-      }
-      await this.requestClient({
-        method: "post",
-        url: "https://account.xiaomi.com/pass/serviceLoginAuth2",
-        headers: {
-          Host: "account.xiaomi.com",
-          Accept: "*/*",
-          "User-Agent": "APP/com.xiaomi.mihome APPV/7.12.202 iosPassportSDK/4.2.14 iOS/14.8 miHSTS",
-          "Accept-Language": "de-de",
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        data: qs.stringify({
-          _json: "true",
-          hash: crypto.createHash("md5").update(this.config.password).digest("hex").toUpperCase(),
-          sid: "xiaomiio",
-          callback: "https://sts.api.io.mi.com/sts",
-          _sign: firstStep._sign,
-          qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
-          user: this.config.username,
-        }),
-      })
-        .then((res) => {
-          this.log.debug(JSON.stringify(res.data));
-          if (res.data.indexOf("&&&START&&&") === 0) {
-            const data = res.data.replace("&&&START&&&", "");
-            this.session = JSON.parse(data);
-          }
-          return {};
-        })
-        .catch((error) => {
-          this.log.error(error);
-          error.response && this.log.error(JSON.stringify(error.response.data));
-        });
 
-      if (!this.session.ssecurity) {
-        this.log.error("Login failed");
-        return;
+    if (response && response.ssecurity) {
+      // Already logged in
+      this.session = response;
+      return true;
+    } else if (response && response._sign) {
+      this.session = { _sign: response._sign };
+      return true;
+    }
+
+    return false;
+  }
+
+  async loginStep2() {
+    this.log.debug("Login Step 2");
+    const url = "https://account.xiaomi.com/pass/serviceLoginAuth2";
+    const headers = {
+      "User-Agent": "APP/com.xiaomi.mihome APPV/10.5.201",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: `sdkVersion=accountsdk-18.8.15; deviceId=${this.deviceId}; pass_ua=web; uLocale=de_DE;`,
+    };
+
+    const fields = {
+      sid: "xiaomiio",
+      hash: crypto.createHash("md5").update(this.config.password).digest("hex").toUpperCase(),
+      callback: "https://sts.api.io.mi.com/sts",
+      qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
+      user: this.config.username,
+      _sign: this.session._sign,
+      _json: "true",
+    };
+
+    const call = `${url}?${qs.stringify(fields)}`;
+
+    const response = await this.requestClient({
+      method: "post",
+      url: call,
+      headers: headers,
+      data: null,
+    })
+      .then((res) => {
+        this.log.debug("&&&START&&&" + JSON.stringify(res.data));
+        if (res.data.indexOf("&&&START&&&") === 0) {
+          const data = res.data.replace("&&&START&&&", "");
+          return JSON.parse(data);
+        }
+        return {};
+      })
+      .catch((error) => {
+        this.log.error(error);
+        error.response && this.log.error(JSON.stringify(error.response.data));
+        return {};
+      });
+
+    // Handle captcha if required
+    if (response && response.captchaUrl && response.captchaUrl !== null) {
+      this.log.info("Captcha required for login, please use following url:");
+      this.log.info("https://account.xiaomi.com" + response.captchaUrl);
+      this.log.info("Please open the URL above and solve the captcha.");
+      this.log.info("The adapter will automatically retry login every 30 seconds until successful.");
+
+      // Set shorter retry intervals for captcha
+      this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
+      this.refreshTokenTimeout = setTimeout(() => {
+        this.log.info("Retrying login after captcha...");
+        this.refreshToken();
+      }, 30 * 1000); // Retry every 30 seconds
+
+      return false;
+    }
+
+    // Handle two-factor authentication
+    if (response && response.notificationUrl) {
+      this.log.info("Two-factor authentication required, please use following url:");
+      this.log.info(response.notificationUrl);
+      this.log.info("Please open the URL above and complete the verification.");
+      this.log.info("After completing verification, the adapter will automatically retry...");
+
+      // Save session state for 2FA resumption after potential restart
+      this.session = {
+        ssecurity: response.ssecurity,
+        userId: response.userId,
+        cUserId: response.cUserId,
+        passToken: response.passToken,
+        location: response.location,
+        code: response.code,
+        notificationUrl: response.notificationUrl, // Save 2FA URL for reference
+      };
+
+      // Save cookies and session state so we can resume after restart
+      await this.saveCookies();
+
+      // Set retry timer for 2FA - user completes verification and adapter retries
+      this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
+      this.refreshTokenTimeout = setTimeout(() => {
+        this.log.info("Retrying login after 2FA...");
+        this.refreshToken();
+      }, 30 * 1000); // Retry every 30 seconds
+
+      return false;
+    }
+
+    // Check for successful login
+    if (response && response.ssecurity && response.ssecurity.length > 4) {
+      this.session = {
+        ssecurity: response.ssecurity,
+        userId: response.userId,
+        cUserId: response.cUserId,
+        passToken: response.passToken,
+        location: response.location,
+        code: response.code,
+      };
+
+      return true;
+    }
+
+    // Handle other error cases
+    if (response && response.code) {
+      this.log.error("Login failed with code: " + response.code);
+      if (response.description) {
+        this.log.error("Description: " + response.description);
       }
     }
-    await this.requestClient({
+
+    return false;
+  }
+
+  async loginStep3() {
+    this.log.debug("Login Step 3");
+    const headers = {
+      "User-Agent": "APP/com.xiaomi.mihome APPV/10.5.201",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: `sdkVersion=accountsdk-18.8.15; deviceId=${this.deviceId};`,
+    };
+
+    const response = await this.requestClient({
       method: "get",
       url: this.session.location,
-      headers: {
-        Accept: "*/*",
-        "User-Agent": "APP/com.xiaomi.mihome APPV/7.12.202 iosPassportSDK/4.2.14 iOS/14.8 miHSTS",
-        "Accept-Language": "de-de",
-      },
+      headers: headers,
     })
       .then(async (res) => {
         this.log.debug(JSON.stringify(res.data));
         this.setState("info.connection", true, true);
         this.log.info("Login successful");
-        const serviceToken = this.cookieJar.store.idx["sts.api.io.mi.com"]["/"].serviceToken.value;
 
+        // Extract service token from response headers (example.js approach)
+        const setCookie = res.headers["set-cookie"] || [];
+        const serviceTokenCookie = setCookie.find((c) => c.includes("serviceToken"));
+        const serviceToken = serviceTokenCookie ? serviceTokenCookie.split("=")[1].split(";")[0] : null;
+
+        if (!serviceToken) {
+          this.log.error("Service token not found in response headers");
+          return false;
+        }
+
+        // Set required cookies for API calls
         await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
         await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+
+        // Save cookies after complete authentication (including 2FA if required)
+        await this.saveCookies();
+
+        return true;
       })
       .catch((error) => {
         this.log.error(error);
         error.response && this.log.error(JSON.stringify(error.response.data));
+        return false;
       });
+
+    return response;
   }
 
   async getDeviceList() {
@@ -836,7 +982,7 @@ class MihomeCloud extends utils.Adapter {
   }
   async getActions() {
     if (!this.home || this.home.homelist.length === 0) {
-      this.log.error("No home found");
+      this.log.info("No home found, skipping getActions");
       return;
     }
     const path = "/scene/tplv2";
@@ -1146,7 +1292,22 @@ class MihomeCloud extends utils.Adapter {
   }
   async refreshToken() {
     this.log.debug("Refresh token");
-    await this.login();
+    try {
+      const loginSuccess = await this.login();
+      if (!loginSuccess) {
+        this.log.warn("Token refresh failed, will retry in 5 minutes");
+        this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
+        this.refreshTokenTimeout = setTimeout(
+          () => {
+            this.refreshToken();
+          },
+          5 * 60 * 1000,
+        ); // Retry in 5 minutes
+      }
+    } catch (error) {
+      this.log.error("Error during token refresh:", error);
+      this.setState("info.connection", false, true);
+    }
   }
 
   generateNonce() {
@@ -1157,10 +1318,6 @@ class MihomeCloud extends utils.Adapter {
   }
 
   signedNonce(ssecret, nonce) {
-    if (!ssecret || !nonce) {
-      this.log.warn("No ssecret or nonce provided please check login");
-      return "";
-    }
     const s = Buffer.from(ssecret, "base64");
     const n = Buffer.from(nonce, "base64");
     return crypto.createHash("sha256").update(s).update(n).digest("base64");
@@ -1173,6 +1330,171 @@ class MihomeCloud extends utils.Adapter {
       result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     return result;
+  }
+
+  /**
+   * Resume session from saved cookies and session state
+   */
+  async resumeSession() {
+    try {
+      this.log.debug("Attempting to resume session...");
+
+      // Check if we have a saved session with location (ready for step 3)
+      if (this.session && this.session.location && this.session.ssecurity) {
+        this.log.info("Found saved session with location, attempting step 3...");
+
+        // Try to complete step 3 with saved session
+        if (await this.loginStep3()) {
+          this.log.info("Session resumed successfully after 2FA completion");
+          return true;
+        } else {
+          this.log.warn("Step 3 failed during session resumption");
+          return false;
+        }
+      }
+
+      // If we have session data but no location, try to continue from step 2
+      if (this.session && this.session.ssecurity && !this.session.location) {
+        this.log.info("Found partial session, checking if 2FA was completed...");
+
+        // Try step 2 again to see if 2FA was completed
+        if (await this.loginStep2()) {
+          if (await this.loginStep3()) {
+            this.log.info("Session resumed successfully after 2FA completion");
+            return true;
+          }
+        }
+
+        this.log.info("2FA not yet completed, will continue retrying...");
+        return false;
+      }
+
+      // Try to make a test API call to see if session is still valid
+      if (this.session && this.session.ssecurity) {
+        this.log.debug("Testing existing session validity...");
+
+        try {
+          const path = "/v2/home/device_list_page";
+          const data = { get_split_device: true, support_smart_home: true, accessKey: "IOS00026747c5acafc2", limit: 1 };
+          const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+
+          const response = await this.requestClient({
+            method: "post",
+            url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+            headers: this.header,
+            data: qs.stringify({
+              _nonce: nonce,
+              data: data_rc,
+              rc4_hash__: rc4_hash_rc,
+              signature: signature,
+            }),
+          });
+
+          const result = JSON.parse(rc4.decode(response.data).replace("&&&START&&&", ""));
+
+          if (result.code === 0) {
+            this.log.info("Existing session is still valid");
+            this.setState("info.connection", true, true);
+            return true;
+          } else {
+            this.log.debug("Session test failed with code: " + result.code);
+            return false;
+          }
+        } catch (error) {
+          this.log.debug("Session test failed: " + error.message);
+          return false;
+        }
+      }
+
+      this.log.debug("No valid session found for resumption");
+      return false;
+    } catch (error) {
+      this.log.warn("Error during session resumption: " + error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Save cookies to ioBroker state for persistence across adapter restarts
+   */
+  async saveCookies() {
+    try {
+      const cookieData = {
+        cookies: this.cookieJar.toJSON(),
+        deviceId: this.deviceId,
+        session: this.session, // Save session data for resumption
+        timestamp: Date.now(),
+      };
+
+      // Create auth channel if it doesn't exist
+      await this.setObjectNotExistsAsync("auth", {
+        type: "channel",
+        common: {
+          name: "Authentication Data",
+        },
+        native: {},
+      });
+
+      // Create session state object if it doesn't exist
+      await this.extendObject(this.cookieStateId, {
+        type: "state",
+        common: {
+          name: "Authentication Session Data (Cookies and Session)",
+          type: "string",
+          role: "json",
+          read: true,
+          write: false,
+        },
+        native: {},
+      });
+
+      // Save cookies to state
+      await this.setStateAsync(this.cookieStateId, JSON.stringify(cookieData), true);
+      this.log.debug("Cookies and session saved successfully to state");
+    } catch (error) {
+      this.log.warn("Failed to save cookies: " + error.message);
+    }
+  }
+
+  /**
+   * Load cookies from ioBroker state to restore session after adapter restart
+   */
+  async loadCookies() {
+    try {
+      const state = await this.getStateAsync(this.cookieStateId);
+      if (!state || !state.val) {
+        this.log.debug("No saved cookies found");
+        return false;
+      }
+
+      const cookieData = JSON.parse(state.val);
+
+      // Check if cookies are not too old (max 24 hours)
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      if (Date.now() - cookieData.timestamp > maxAge) {
+        this.log.info("Saved cookies are too old, will perform fresh login");
+        return false;
+      }
+
+      // Restore deviceId to maintain consistency
+      if (cookieData.deviceId) {
+        this.deviceId = cookieData.deviceId;
+      }
+
+      // Restore session data if available
+      if (cookieData.session) {
+        this.session = cookieData.session;
+        this.log.debug("Session data restored from state");
+      }
+
+      // Restore cookies to jar using proper tough-cookie method
+      this.cookieJar = tough.CookieJar.fromJSON(cookieData.cookies);
+      this.log.debug("Cookies and session loaded successfully from state");
+      return true;
+    } catch (error) {
+      this.log.warn("Failed to load cookies: " + error.message);
+      return false;
+    }
   }
   /**
    * Is called when adapter shuts down - callback has to be called under any circumstances!
@@ -1232,6 +1554,7 @@ class MihomeCloud extends utils.Adapter {
           data = { us_id: folder, accessKey: "IOS00026747c5acafc2" };
         }
         this.log.debug(`Search for ${deviceId} in ${JSON.stringify(this.deviceDicts)}`);
+
         if (
           (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) ||
           id.includes("remotePlugins.customCommand")
