@@ -1825,13 +1825,6 @@ class MihomeCloud extends utils.Adapter {
         this.log.debug("Session contains userId: " + cookieData.session.userId);
       }
 
-      // Check if cookies are not too old (max 24 hours)
-      const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-      if (Date.now() - cookieData.timestamp > maxAge) {
-        this.log.info("Saved cookies are too old, will perform fresh login");
-        return false;
-      }
-
       // Restore deviceId to maintain consistency
       if (cookieData.deviceId) {
         this.deviceId = cookieData.deviceId;
