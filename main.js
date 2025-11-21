@@ -506,9 +506,6 @@ class MihomeCloud extends utils.Adapter {
     // Build headers with correct API headers
     const headers = await this.buildApiHeaders();
     
-    this.log.info("Request URL: https://" + this.config.region + "api.io.mi.com/app" + path);
-    this.log.info("Cookie Header (first 150 chars): " + headers.Cookie.substring(0, 150) + "...");
-    
     await axios({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
