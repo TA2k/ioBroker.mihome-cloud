@@ -44,6 +44,7 @@ class MihomeCloud extends utils.Adapter {
     this.cookieJar = new tough.CookieJar();
     this.requestClient = axios.create({
       withCredentials: true,
+      maxRedirects: 5, // Allow some redirects by default
       httpsAgent: new HttpsCookieAgent({
         cookies: {
           jar: this.cookieJar,
@@ -90,6 +91,7 @@ class MihomeCloud extends utils.Adapter {
     this.reLoginTimeout = null;
     this.refreshTokenTimeout = null;
     this.session = {};
+    
     this.subscribeStates("*");
 
     // Try to load saved cookies first
@@ -98,14 +100,45 @@ class MihomeCloud extends utils.Adapter {
 
     if (cookiesLoaded) {
       this.log.info("Cookies loaded, attempting to resume session...");
-      // Try to resume session - if it fails, perform fresh login
-      const sessionResumed = await this.resumeSession();
-      if (!sessionResumed) {
-        this.log.info("Session resumption failed, performing fresh login...");
+      
+      // Validate ssecurity - must be done BEFORE trying to use the session
+      // Valid ssecurity is typically 24-32 characters (Base64 encoded)
+      // Check for corruption: too short (<20) or contains invalid characters
+      if (this.session && this.session.ssecurity) {
+        this.log.debug("Found ssecurity with length: " + this.session.ssecurity.length + " chars");
+        
+        // Check if ssecurity is corrupted (too short or contains invalid Base64 characters)
+        const isCorrupted = this.session.ssecurity.length < 20 || !/^[A-Za-z0-9+/=]+$/.test(this.session.ssecurity);
+        
+        if (isCorrupted) {
+          this.log.warn("Found corrupted session (ssecurity invalid: " + this.session.ssecurity.length + " chars), clearing for fresh login...");
+          this.session = {};
+          this.cookieJar = new tough.CookieJar(); // Clear all cookies
+          await this.saveCookies(); // Clear the saved state
+          await this.login();
+        } else {
+          // ssecurity looks valid - try to resume session
+          const sessionResumed = await this.resumeSession();
+          if (!sessionResumed) {
+            this.log.info("Session resumption failed, clearing session and performing fresh login...");
+            this.session = {};
+            this.cookieJar = new tough.CookieJar(); // Clear all cookies
+            await this.saveCookies(); // Clear the saved state
+            await this.login();
+          }
+        }
+      } else {
+        // No ssecurity found - clear everything and perform fresh login
+        this.log.info("No valid session found, clearing and performing fresh login...");
+        this.session = {};
+        this.cookieJar = new tough.CookieJar(); // Clear all cookies
+        await this.saveCookies(); // Clear the saved state
         await this.login();
       }
     } else {
-      this.log.info("No saved cookies found, performing fresh login...");
+      this.log.info("No saved cookies found, clearing and performing fresh login...");
+      this.session = {};
+      this.cookieJar = new tough.CookieJar(); // Clear all cookies
       await this.login();
     }
 
@@ -132,247 +165,367 @@ class MihomeCloud extends utils.Adapter {
     );
   }
   async login() {
-    // Set essential cookies for authentication
-    await this.cookieJar.setCookie("sdkVersion=accountsdk-18.8.15; path=/; domain=mi.com", "https://mi.com");
-    await this.cookieJar.setCookie("sdkVersion=accountsdk-18.8.15; path=/; domain=xiaomi.com", "https://xiaomi.com");
-    await this.cookieJar.setCookie("deviceId=" + this.deviceId + "; path=/; domain=mi.com", "https://mi.com");
-    await this.cookieJar.setCookie("deviceId=" + this.deviceId + "; path=/; domain=xiaomi.com", "https://xiaomi.com");
+    // QR-Code Login (matching Python's QrCodeXiaomiCloudConnector)
+    this.log.info("Starting Xiaomi Cloud Login...");
+    
+    // Clear any old session data to ensure fresh login
+    this.session = {};
+    
+    // Step 1: Get QR code URL
+    if (!await this.qrLoginStep1()) {
+      this.log.error("Unable to get login QR code");
+      return false;
+    }
 
-    if (await this.loginStep1()) {
-      if (await this.loginStep2()) {
-        if (await this.loginStep3()) {
+    // Step 2: Display QR code and wait for scan
+    if (!await this.qrLoginStep2()) {
+      this.log.error("Unable to display QR code");
+      return false;
+    }
+
+    // Step 3: Wait for user to scan QR code
+    if (!await this.qrLoginStep3()) {
+      this.log.error("QR code login timeout or failed");
+      return false;
+    }
+
+    // Step 4: Get service token
+    if (!await this.qrLoginStep4()) {
+      this.log.error("Unable to get service token");
+      return false;
+    }
+
+    this.log.info("Login successful!");
+    return true;
+  }
+
+  /**
+   * QR-Code Login Step 1: Get QR code URL
+   * Matches Python's login_step_1()
+   */
+  async qrLoginStep1() {
+    this.log.debug("QR Login Step 1");
+    const url = "https://account.xiaomi.com/longPolling/loginUrl";
+    const params = {
+      _qrsize: "480",
+      qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
+      callback: "https://sts.api.io.mi.com/sts",
+      _hasLogo: "false",
+      sid: "xiaomiio",
+      serviceParam: "",
+      _locale: "en_GB",
+      _dc: Date.now().toString(),
+    };
+
+    try {
+      this.log.debug("Requesting QR code from: " + url);
+      this.log.debug("Request params: " + JSON.stringify(params));
+      
+      const response = await this.requestClient({
+        method: "get",
+        url: url,
+        params: params,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "*/*",
+        },
+      });
+
+      this.log.debug("QR Login Step 1 response status: " + response.status);
+      this.log.debug("QR Login Step 1 response data: " + JSON.stringify(response.data));
+
+      if (response.status === 200 && response.data) {
+        // Parse response data - remove &&&START&&& prefix if present
+        let data = response.data;
+        if (typeof data === 'string' && data.indexOf('&&&START&&&') === 0) {
+          data = JSON.parse(data.replace('&&&START&&&', ''));
+          this.log.debug("Parsed JSON after removing &&&START&&& prefix");
+        }
+        
+        if (data.qr) {
+          this.session.qrImageUrl = data.qr;
+          this.session.loginUrl = data.loginUrl;
+          this.session.longPollingUrl = data.lp;
+          this.session.timeout = data.timeout;
+          this.log.debug("QR code URLs extracted successfully");
+          this.log.debug("QR Image URL: " + data.qr);
+          this.log.debug("Login URL: " + data.loginUrl);
+          this.log.debug("Long Polling URL: " + data.lp);
           return true;
         } else {
-          this.log.error("Unable to get service token");
+          this.log.error("Response data missing 'qr' field: " + JSON.stringify(data));
         }
-      } else {
-        this.log.error("Invalid login or password");
       }
-    } else {
-      this.log.error("Invalid username");
+    } catch (error) {
+      this.log.error("QR Login Step 1 error: " + error.message);
+      if (error.response) {
+        this.log.error("Response status: " + error.response.status);
+        this.log.error("Response data: " + JSON.stringify(error.response.data));
+      }
+      this.log.debug("Error stack: " + error.stack);
     }
+    
     return false;
   }
 
-  async loginStep1() {
-    this.log.debug("Login Step 1");
-    const url = "https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true";
-    const headers = {
-      "User-Agent": "APP/com.xiaomi.mihome APPV/10.5.201",
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: `userId=${this.config.username}; sdkVersion=accountsdk-18.8.15; deviceId=${this.deviceId};`,
-    };
+  /**
+   * QR-Code Login Step 2: Display QR code
+   * Matches Python's login_step_2()
+   */
+  async qrLoginStep2() {
+    this.log.debug("QR Login Step 2");
+    const url = this.session.qrImageUrl;
+    this.log.debug("QR Image URL: " + url);
 
-    const response = await this.requestClient({
-      method: "get",
-      url: url,
-      headers: headers,
-    })
-      .then((res) => {
-        this.log.debug("&&&START&&&" + JSON.stringify(res.data));
-        if (res.data.indexOf("&&&START&&&") === 0) {
-          const data = res.data.replace("&&&START&&&", "");
-          return JSON.parse(data);
-        }
-        return {};
-      })
-      .catch((error) => {
-        this.log.error(error);
-        error.response && this.log.error(JSON.stringify(error.response.data));
-        return {};
+    try {
+      const response = await this.requestClient({
+        method: "get",
+        url: url,
+        responseType: "arraybuffer",
       });
 
-    if (response && response.ssecurity) {
-      // Already logged in
-      this.session = response;
-      return true;
-    } else if (response && response._sign) {
-      this.session = { _sign: response._sign };
-      return true;
+      if (response.status === 200) {
+        // Convert image to base64 data URL
+        const base64Image = Buffer.from(response.data, "binary").toString("base64");
+        const dataUrl = `data:image/png;base64,${base64Image}`;
+
+        this.log.info("════════════════════════════════════════════════════════");
+        this.log.info("  XIAOMI CLOUD LOGIN REQUIRED");
+        this.log.info("════════════════════════════════════════════════════════");
+        this.log.info("");
+        this.log.info("Please visit this URL in your browser and log in:");
+        this.log.info(this.session.loginUrl);
+        this.log.info("");
+        this.log.info("After logging in, the adapter will automatically continue.");
+        this.log.info("════════════════════════════════════════════════════════");
+
+        return true;
+      }
+    } catch (error) {
+      this.log.error("QR Login Step 2 error: " + error.message);
     }
 
     return false;
   }
 
-  async loginStep2() {
-    this.log.debug("Login Step 2");
-    const url = "https://account.xiaomi.com/pass/serviceLoginAuth2";
-    const headers = {
-      "User-Agent": "APP/com.xiaomi.mihome APPV/10.5.201",
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: `sdkVersion=accountsdk-18.8.15; deviceId=${this.deviceId}; pass_ua=web; uLocale=de_DE;`,
-    };
+  /**
+   * QR-Code Login Step 3: Long-polling for QR code scan
+   * Matches Python's login_step_3()
+   */
+  async qrLoginStep3() {
+    this.log.debug("QR Login Step 3");
+    const url = this.session.longPollingUrl;
+    this.log.debug("Long polling URL: " + url);
 
-    const fields = {
-      sid: "xiaomiio",
-      hash: crypto.createHash("md5").update(this.config.password).digest("hex").toUpperCase(),
-      callback: "https://sts.api.io.mi.com/sts",
-      qs: "%3Fsid%3Dxiaomiio%26_json%3Dtrue",
-      user: this.config.username,
-      _sign: this.session._sign,
-      _json: "true",
-    };
+    const startTime = Date.now();
+    // timeout from API is in seconds, convert to milliseconds
+    const timeoutMs = (this.session.timeout || 300) * 1000; // Default 300 seconds (5 minutes)
+    this.log.info("Login valid for " + (timeoutMs / 1000) + " seconds");
 
-    const call = `${url}?${qs.stringify(fields)}`;
+    // Start long polling
+    while (true) {
+      // Check if overall timeout exceeded BEFORE making request
+      const elapsed = Date.now() - startTime;
+      if (elapsed > timeoutMs) {
+        this.log.error("QR code login timeout after " + (elapsed / 1000) + " seconds");
+        return false;
+      }
 
-    const response = await this.requestClient({
-      method: "post",
-      url: call,
-      headers: headers,
-      data: null,
-    })
-      .then((res) => {
-        this.log.debug("&&&START&&&" + JSON.stringify(res.data));
-        if (res.data.indexOf("&&&START&&&") === 0) {
-          const data = res.data.replace("&&&START&&&", "");
-          return JSON.parse(data);
+      try {
+        this.log.debug("Long polling attempt (elapsed: " + Math.round(elapsed / 1000) + "s / " + Math.round(timeoutMs / 1000) + "s)...");
+        
+        const response = await this.requestClient({
+          method: "get",
+          url: url,
+          timeout: 10000, // 10 second timeout per request
+        });
+
+        this.log.debug("Long polling response status: " + response.status);
+
+        if (response.status === 200) {
+          // Parse response data - remove &&&START&&& prefix if present
+          let data = response.data;
+          if (typeof data === 'string' && data.indexOf('&&&START&&&') === 0) {
+            const jsonString = data.replace('&&&START&&&', '');
+            data = JSON.parse(jsonString);
+            this.log.debug("Parsed JSON after removing &&&START&&& prefix from long-polling response");
+            this.log.debug("Full parsed data: " + JSON.stringify(data));
+          }
+          
+          // Check if data contains the required fields
+          if (data && data.userId && data.location) {
+            // Success! User scanned the QR code
+            this.log.info("Login completed successfully!");
+            
+            this.session.userId = data.userId;
+            this.session.ssecurity = data.ssecurity;
+            this.session.cUserId = data.cUserId;
+            this.session.passToken = data.passToken;
+            this.session.location = data.location;
+
+            this.log.debug("User ID: " + this.session.userId);
+            this.log.debug("Ssecurity (length " + (this.session.ssecurity ? this.session.ssecurity.length : 0) + "): " + this.session.ssecurity);
+            this.log.debug("Location: " + this.session.location);
+
+            return true;
+          } else {
+            // Response received but incomplete - continue polling
+            this.log.debug("Received 200 but data incomplete, continuing to wait...");
+            this.log.debug("Response data: " + JSON.stringify(data));
+          }
+        } else {
+          // Non-200 status, continue polling
+          this.log.debug("Received status " + response.status + ", continuing to wait for scan...");
         }
-        return {};
-      })
-      .catch((error) => {
-        this.log.error(error);
-        error.response && this.log.error(JSON.stringify(error.response.data));
-        return {};
-      });
+      } catch (error) {
+        // Timeout is expected - continue polling
+        if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+          this.log.debug("Long polling request timeout (expected), retrying...");
+          continue;
+        } else if (error.response) {
+          // Server returned an error response
+          this.log.debug("Long polling response error: " + error.response.status + " - continuing...");
+          continue;
+        } else {
+          this.log.error("Long polling error: " + error.message);
+          this.log.debug("Error details: " + JSON.stringify(error));
+          // Don't fail immediately on network errors, keep trying
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          continue;
+        }
+      }
+    }
+  }
 
-    // Handle captcha if required
-    if (response && response.captchaUrl && response.captchaUrl !== null) {
-      this.log.info("Captcha required for login, please use following url:");
-      this.log.info("https://account.xiaomi.com" + response.captchaUrl);
-      this.log.info("Please open the URL above and solve the captcha.");
-      this.log.info("The adapter will automatically retry login every 30 seconds until successful.");
+  /**
+   * QR-Code Login Step 4: Get service token
+   * Matches Python's login_step_4()
+   */
+  async qrLoginStep4() {
+    this.log.debug("QR Login Step 4");
+    this.log.debug("Fetching service token...");
 
-      // Set shorter retry intervals for captcha
-      this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-      this.refreshTokenTimeout = setTimeout(() => {
-        this.log.info("Retrying login after captcha...");
-        this.refreshToken();
-      }, 30 * 1000); // Retry every 30 seconds
-
+    const location = this.session.location;
+    if (!location) {
+      this.log.error("No location found");
       return false;
     }
 
-    // Handle two-factor authentication
-    if (response && response.notificationUrl) {
-      this.log.info("Two-factor authentication required, please use following url:");
-      this.log.info(response.notificationUrl);
-      this.log.info("Please open the URL above and complete the verification.");
-      this.log.info("After completing verification, the adapter will automatically retry...");
+    try {
+      const response = await this.requestClient({
+        method: "get",
+        url: location,
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+      });
 
-      // Save session state for 2FA resumption after potential restart
-      this.session = {
-        ssecurity: response.ssecurity,
-        userId: response.userId,
-        cUserId: response.cUserId,
-        passToken: response.passToken,
-        location: response.location,
-        code: response.code,
-        notificationUrl: response.notificationUrl, // Save 2FA URL for reference
-      };
+      if (response.status === 200) {
+        // Extract serviceToken from cookies
+        const cookies = await this.cookieJar.getCookies(location);
+        let serviceToken = null;
+        
+        for (const cookie of cookies) {
+          if (cookie.key === "serviceToken") {
+            serviceToken = cookie.value;
+            break;
+          }
+        }
 
-      // Save cookies and session state so we can resume after restart
-      await this.saveCookies();
-
-      // Set retry timer for 2FA - user completes verification and adapter retries
-      this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-      this.refreshTokenTimeout = setTimeout(() => {
-        this.log.info("Retrying login after 2FA...");
-        this.refreshToken();
-      }, 30 * 1000); // Retry every 30 seconds
-
-      return false;
-    }
-
-    // Check for successful login
-    if (response && response.ssecurity && response.ssecurity.length > 4) {
-      this.session = {
-        ssecurity: response.ssecurity,
-        userId: response.userId,
-        cUserId: response.cUserId,
-        passToken: response.passToken,
-        location: response.location,
-        code: response.code,
-      };
-
-      return true;
-    }
-
-    // Handle other error cases
-    if (response && response.code) {
-      this.log.error("Login failed with code: " + response.code);
-      if (response.description) {
-        this.log.error("Description: " + response.description);
-      }
-    }
-
-    return false;
-  }
-
-  async loginStep3() {
-    this.log.debug("Login Step 3");
-    const headers = {
-      "User-Agent": "APP/com.xiaomi.mihome APPV/10.5.201",
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: `sdkVersion=accountsdk-18.8.15; deviceId=${this.deviceId};`,
-    };
-
-    const response = await this.requestClient({
-      method: "get",
-      url: this.session.location,
-      headers: headers,
-    })
-      .then(async (res) => {
-        this.log.debug(JSON.stringify(res.data));
-        this.setState("info.connection", true, true);
-        this.log.info("Login successful");
-
-        // Extract service token from response headers (example.js approach)
-        const setCookie = res.headers["set-cookie"] || [];
-        const serviceTokenCookie = setCookie.find((c) => c.includes("serviceToken"));
-        const serviceToken = serviceTokenCookie ? serviceTokenCookie.split("=")[1].split(";")[0] : null;
+        // Fallback: check Set-Cookie headers
+        if (!serviceToken && response.headers["set-cookie"]) {
+          const setCookies = Array.isArray(response.headers["set-cookie"]) 
+            ? response.headers["set-cookie"] 
+            : [response.headers["set-cookie"]];
+          
+          for (const cookieStr of setCookies) {
+            if (cookieStr.includes("serviceToken=")) {
+              const match = cookieStr.match(/serviceToken=([^;]+)/);
+              if (match) {
+                serviceToken = match[1];
+                break;
+              }
+            }
+          }
+        }
 
         if (!serviceToken) {
-          this.log.error("Service token not found in response headers");
+          this.log.error("Failed to extract serviceToken");
           return false;
         }
 
-        // Set required cookies for API calls
-        await this.cookieJar.setCookie("serviceToken=" + serviceToken + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
-        await this.cookieJar.setCookie("userId=" + this.session.userId + "; path=/; domain=api.io.mi.com", "https://api.io.mi.com");
+        this.session.serviceToken = serviceToken;
+        this.log.info("Service token obtained successfully");
+        this.log.debug("Service token: " + serviceToken);
 
-        // Save cookies after complete authentication (including 2FA if required)
+        // Install service token cookies on multiple domains (matching Python)
+        const apiDomains = [
+          { domain: ".api.io.mi.com", url: "https://api.io.mi.com" },
+          { domain: ".io.mi.com", url: "https://io.mi.com" },
+          { domain: ".mi.com", url: "https://mi.com" }
+        ];
+        
+        for (const {domain, url} of apiDomains) {
+          await this.cookieJar.setCookie(`serviceToken=${serviceToken}; Domain=${domain}; Path=/`, url);
+          await this.cookieJar.setCookie(`yetAnotherServiceToken=${serviceToken}; Domain=${domain}; Path=/`, url);
+          if (this.session.userId) {
+            await this.cookieJar.setCookie(`userId=${this.session.userId}; Domain=${domain}; Path=/`, url);
+          }
+        }
+
+        // Clean up temporary QR-Code URLs from session before saving
+        // These are only valid for 5 minutes and should not be saved
+        delete this.session.qrImageUrl;
+        delete this.session.loginUrl;
+        delete this.session.longPollingUrl;
+        delete this.session.timeout;
+        
+        // Save cookies
         await this.saveCookies();
+        
+        // Set connection state
+        this.setState("info.connection", true, true);
 
         return true;
-      })
-      .catch((error) => {
-        this.log.error(error);
-        error.response && this.log.error(JSON.stringify(error.response.data));
-        return false;
-      });
+      }
+    } catch (error) {
+      this.log.error("QR Login Step 4 error: " + error.message);
+    }
 
-    return response;
+    return false;
   }
+
 
   async getDeviceList() {
     this.log.info("Get devices");
+    
     const path = "/v2/home/device_list_page";
     const data = { get_split_device: true, support_smart_home: true, accessKey: "IOS00026747c5acafc2", limit: 300 };
-    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const { nonce, data_rc, rc4_hash_rc, signature, signedNonce } = this.createBody(path, data);
 
-    await this.requestClient({
+    // Build headers with correct API headers
+    const headers = await this.buildApiHeaders();
+    
+    this.log.info("Request URL: https://" + this.config.region + "api.io.mi.com/app" + path);
+    this.log.info("Cookie Header (first 150 chars): " + headers.Cookie.substring(0, 150) + "...");
+    
+    await axios({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
-        _nonce: nonce,
+      headers: headers,
+      params: {
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+        _nonce: nonce,
+      },
     })
       .then(async (res) => {
         try {
+          // Python: decoded = self.decrypt_rc4(self.signed_nonce(fields["_nonce"]), response.text)
+          // Create new RC4 with signedNonce for response decoding
+          const rc4 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
           res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
         } catch (error) {
           this.log.error(error);
@@ -560,17 +713,23 @@ class MihomeCloud extends utils.Adapter {
     const path = "/scene/list";
     const data = { st_id: "30", api_version: 5, accessKey: "IOS00026747c5acafc2" };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const cookieHeader = await this.buildCookieHeader();
 
     await this.requestClient({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
+      headers: {
+        ...this.header,
+        Cookie: cookieHeader,
+      },
+      params: {
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+      },
+      data: "",
     })
       .then(async (res) => {
         try {
@@ -861,17 +1020,23 @@ class MihomeCloud extends utils.Adapter {
 
   async genericRequest(path, data) {
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const cookieHeader = await this.buildCookieHeader();
 
     return await this.requestClient({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
+      headers: {
+        ...this.header,
+        Cookie: cookieHeader,
+      },
+      params: {
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+      },
+      data: "",
     })
       .then(async (res) => {
         try {
@@ -894,17 +1059,23 @@ class MihomeCloud extends utils.Adapter {
     const path = "/v2/home/local_device_list";
     const data = { accessKey: "IOS00026747c5acafc2" };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const cookieHeader = await this.buildCookieHeader();
 
     await this.requestClient({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
+      headers: {
+        ...this.header,
+        Cookie: cookieHeader,
+      },
+      params: {
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+      },
+      data: "",
     })
       .then(async (res) => {
         try {
@@ -923,17 +1094,23 @@ class MihomeCloud extends utils.Adapter {
     const path = "/homeroom/gethome";
     const data = { fetch_share: true, accessKey: "IOS00026747c5acafc2", app_ver: 7, limit: 300 };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const cookieHeader = await this.buildCookieHeader();
 
     await this.requestClient({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
+      headers: {
+        ...this.header,
+        Cookie: cookieHeader,
+      },
+      params: {
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+      },
+      data: "",
     })
       .then(async (res) => {
         try {
@@ -954,17 +1131,23 @@ class MihomeCloud extends utils.Adapter {
     const path = "/v2/plugin/get_config_info_new";
     const data = { accessKey: "IOS00026747c5acafc2" };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const cookieHeader = await this.buildCookieHeader();
 
     await this.requestClient({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
+      headers: {
+        ...this.header,
+        Cookie: cookieHeader,
+      },
+      params: {
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+      },
+      data: "",
     })
       .then(async (res) => {
         try {
@@ -993,17 +1176,20 @@ class MihomeCloud extends utils.Adapter {
       limit: 300,
     };
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+    const headers = await this.buildApiHeaders();
 
     await this.requestClient({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: this.header,
-      data: qs.stringify({
+      headers: headers,
+      params: {
         _nonce: nonce,
         data: data_rc,
         rc4_hash__: rc4_hash_rc,
         signature: signature,
-      }),
+        ssecurity: this.session.ssecurity,
+      },
+      data: "",
     })
       .then(async (res) => {
         try {
@@ -1023,17 +1209,107 @@ class MihomeCloud extends utils.Adapter {
       });
   }
 
+  async buildApiHeaders() {
+    // Build headers matching Python's execute_api_call_encrypted
+    const cookieHeader = await this.buildCookieHeader();
+    return {
+      "User-Agent": this.header["User-Agent"],
+      "Content-Type": "application/x-www-form-urlencoded",
+      "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
+      "MIOT-ENCRYPT-ALGORITHM": "ENCRYPT-RC4",
+      Cookie: cookieHeader
+    };
+  }
+
+  async buildCookieHeader() {
+    // Python sends cookies as a dict to requests.post(cookies={...})
+    // requests combines this with session cookies automatically
+    // We need to manually build the cookie header from ALL cookies in the jar
+    // plus the explicit ones that Python sets
+    
+    const targetDomain = "https://" + this.config.region + "api.io.mi.com";
+    const allCookies = await this.cookieJar.getCookies(targetDomain);
+    
+    // Start with cookies from jar
+    const cookieMap = {};
+    for (const cookie of allCookies) {
+      cookieMap[cookie.key] = cookie.value;
+    }
+    
+    // Override/add the explicit cookies that Python sets
+    // (these match what Python passes in the cookies parameter)
+    cookieMap["userId"] = this.session.userId || cookieMap["userId"];
+    cookieMap["serviceToken"] = this.session.serviceToken || cookieMap["serviceToken"];
+    cookieMap["yetAnotherServiceToken"] = this.session.serviceToken || cookieMap["yetAnotherServiceToken"];
+    cookieMap["locale"] = "de_DE";
+    cookieMap["timezone"] = "GMT+01:00";
+    cookieMap["is_daylight"] = "0";
+    cookieMap["dst_offset"] = "3600000";
+    cookieMap["channel"] = "MI_APP_STORE";
+    
+    this.log.debug(`buildCookieHeader: Using userId=${cookieMap["userId"]} (session.userId=${this.session.userId})`);
+    this.log.debug(`buildCookieHeader: Using serviceToken=${cookieMap["serviceToken"]?.substring(0, 30)}...`);
+    
+    if (!cookieMap["serviceToken"]) {
+      this.log.error("buildCookieHeader: serviceToken is missing!");
+      this.log.error("Session keys: " + Object.keys(this.session).join(", "));
+      this.log.error("Available cookies: " + Object.keys(cookieMap).join(", "));
+    }
+    
+    // Build cookie header string
+    return Object.entries(cookieMap).map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+
   createBody(path, data) {
+    if (!this.session.ssecurity) {
+      this.log.error("Cannot create request body: ssecurity is missing from session!");
+      this.log.error("Session keys: " + Object.keys(this.session).join(", "));
+      throw new Error("ssecurity is required but not found in session");
+    }
+    
+    // Python does: url.split("com")[1].replace("/app/", "/")
+    // So /app/v2/home/device_list_page becomes /v2/home/device_list_page
+    const normalizedPath = path.replace("/app/", "/");
+    
+    this.log.debug(`Creating body for ${path} (normalized: ${normalizedPath}) with ssecurity: ${this.session.ssecurity.substring(0, 20)}...`);
     const nonce = this.generateNonce();
     const signedNonce = this.signedNonce(this.session.ssecurity, nonce);
-    let params = ["POST", path, `data=${JSON.stringify(data)}`, signedNonce];
+    
+    // Python algorithm matches exactly:
+    // 1. params["rc4_hash__"] = generate_enc_signature(url, method, signed_nonce, params)
+    //    where params = {"data": {...}} (unencrypted)
+    // 2. for k, v in params.items(): params[k] = encrypt_rc4(signed_nonce, v)
+    //    This encrypts BOTH data AND rc4_hash__!
+    // 3. params.update({"signature": generate_enc_signature(url, method, signed_nonce, params), ...})
+    //    Signature calculated with encrypted params
+    
+    // Step 1: Calculate rc4_hash__ with UNENCRYPTED data param
+    const dataStr = JSON.stringify(data);
+    let signatureParams = ["POST", normalizedPath, `data=${dataStr}`, signedNonce];
+    this.log.debug(`Step 1 - Signature params (unencrypted): POST & ${normalizedPath} & data=... & signedNonce`);
+    const rc4_hash = crypto.createHash("sha1").update(signatureParams.join("&"), "utf8").digest("base64");
+    this.log.debug(`Step 1 - rc4_hash (unencrypted): ${rc4_hash}`);
+    
+    // Step 2: Encrypt data
+    const rc4_1 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
+    const data_rc = rc4_1.encode(dataStr);
+    this.log.debug(`Step 2a - Encrypted data (first 50 chars): ${data_rc.substring(0, 50)}`);
+    
+    // Step 2b: Encrypt rc4_hash__ (Python does this in the for loop)
+    const rc4_2 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
+    const rc4_hash_rc = rc4_2.encode(rc4_hash);
+    this.log.debug(`Step 2b - Encrypted rc4_hash: ${rc4_hash_rc}`);
+    
+    // Step 3: Calculate final signature with ENCRYPTED params (both data and rc4_hash__)
+    signatureParams = ["POST", normalizedPath, `data=${data_rc}`, `rc4_hash__=${rc4_hash_rc}`, signedNonce];
+    this.log.debug(`Step 3 - Signature params (encrypted): POST & ${normalizedPath} & data=... & rc4_hash__=... & signedNonce`);
+    const signature = crypto.createHash("sha1").update(signatureParams.join("&"), "utf8").digest("base64");
+    this.log.debug(`Step 3 - Final signature: ${signature}`);
+    
+    // Create RC4 instance for decoding the response
     const rc4 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
-    const rc4_hash = crypto.createHash("sha1").update(params.join("&"), "utf8").digest("base64");
-    const data_rc = rc4.encode(JSON.stringify(data));
-    const rc4_hash_rc = rc4.encode(rc4_hash);
-    params = ["POST", path, `data=${data_rc}`, `rc4_hash__=${rc4_hash_rc}`, signedNonce];
-    const signature = crypto.createHash("sha1").update(params.join("&"), "utf8").digest("base64");
-    return { nonce, data_rc, rc4_hash_rc, signature, rc4 };
+    
+    return { nonce, data_rc, rc4_hash_rc, signature, signedNonce, rc4 };
   }
   getRole(element, write, valueRange) {
     if (!element) {
@@ -1114,16 +1390,22 @@ class MihomeCloud extends utils.Adapter {
       for (const element of statusArray) {
         const data = JSON.parse(JSON.stringify(element.props).replace("$DID", device.did));
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(element.url, data);
+        const cookieHeader = await this.buildCookieHeader();
         await this.requestClient({
           method: "post",
           url: "https://" + this.config.region + "api.io.mi.com/app" + element.url,
-          headers: this.header,
-          data: qs.stringify({
+          headers: {
+            ...this.header,
+            Cookie: cookieHeader,
+          },
+          params: {
             _nonce: nonce,
             data: data_rc,
             rc4_hash__: rc4_hash_rc,
             signature: signature,
-          }),
+            ssecurity: this.session.ssecurity,
+          },
+          data: "",
         })
           .then(async (res) => {
             try {
@@ -1192,16 +1474,22 @@ class MihomeCloud extends utils.Adapter {
         const data = { type: 3, accessKey: "IOS00026747c5acafc2", params: this.specStatusDict[device.did] };
         this.log.debug(`Get status for ${device.did} via spec`);
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
+        const cookieHeader = await this.buildCookieHeader();
         await this.requestClient({
           method: "post",
           url: "https://" + this.config.region + "api.io.mi.com/app" + url,
-          headers: this.header,
-          data: qs.stringify({
+          headers: {
+            ...this.header,
+            Cookie: cookieHeader,
+          },
+          params: {
             _nonce: nonce,
             data: data_rc,
             rc4_hash__: rc4_hash_rc,
             signature: signature,
-          }),
+            ssecurity: this.session.ssecurity,
+          },
+          data: "",
         })
           .then(async (res) => {
             try {
@@ -1339,78 +1627,108 @@ class MihomeCloud extends utils.Adapter {
     try {
       this.log.debug("Attempting to resume session...");
 
-      // Check if we have a saved session with location (ready for step 3)
-      if (this.session && this.session.location && this.session.ssecurity) {
-        this.log.info("Found saved session with location, attempting step 3...");
-
-        // Try to complete step 3 with saved session
-        if (await this.loginStep3()) {
-          this.log.info("Session resumed successfully after 2FA completion");
-          return true;
-        } else {
-          this.log.warn("Step 3 failed during session resumption");
-          return false;
-        }
-      }
-
-      // If we have session data but no location, try to continue from step 2
-      if (this.session && this.session.ssecurity && !this.session.location) {
-        this.log.info("Found partial session, checking if 2FA was completed...");
-
-        // Try step 2 again to see if 2FA was completed
-        if (await this.loginStep2()) {
-          if (await this.loginStep3()) {
-            this.log.info("Session resumed successfully after 2FA completion");
-            return true;
-          }
-        }
-
-        this.log.info("2FA not yet completed, will continue retrying...");
+      // Check if we have all required session data from QR-Code login
+      if (!this.session || !this.session.ssecurity || !this.session.userId || !this.session.serviceToken) {
+        this.log.debug("Missing required session data (ssecurity, userId, or serviceToken)");
         return false;
       }
 
       // Try to make a test API call to see if session is still valid
-      if (this.session && this.session.ssecurity) {
-        this.log.debug("Testing existing session validity...");
+      this.log.debug("Testing existing session validity...");
 
-        try {
-          const path = "/v2/home/device_list_page";
-          const data = { get_split_device: true, support_smart_home: true, accessKey: "IOS00026747c5acafc2", limit: 1 };
-          const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+      try {
+        const path = "/v2/home/device_list_page";
+        const data = { get_split_device: true, support_smart_home: true, accessKey: "IOS00026747c5acafc2", limit: 1 };
+        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
+        const headers = await this.buildApiHeaders();
 
-          const response = await this.requestClient({
-            method: "post",
-            url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-            headers: this.header,
-            data: qs.stringify({
-              _nonce: nonce,
-              data: data_rc,
-              rc4_hash__: rc4_hash_rc,
-              signature: signature,
-            }),
-          });
+        const response = await this.requestClient({
+          method: "post",
+          url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+          headers: headers,
+          params: {
+            _nonce: nonce,
+            data: data_rc,
+            rc4_hash__: rc4_hash_rc,
+            signature: signature,
+            ssecurity: this.session.ssecurity,
+          },
+          data: "",
+        });
 
-          const result = JSON.parse(rc4.decode(response.data).replace("&&&START&&&", ""));
+        const result = JSON.parse(rc4.decode(response.data).replace("&&&START&&&", ""));
 
-          if (result.code === 0) {
-            this.log.info("Existing session is still valid");
-            this.setState("info.connection", true, true);
-            return true;
-          } else {
-            this.log.debug("Session test failed with code: " + result.code);
-            return false;
-          }
-        } catch (error) {
-          this.log.debug("Session test failed: " + error.message);
+        if (result.code === 0) {
+          this.log.info("Existing session is still valid - resuming without re-login");
+          this.setState("info.connection", true, true);
+          return true;
+        } else {
+          this.log.info("Session test failed with code: " + result.code + " - fresh login required");
           return false;
         }
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          this.log.info("Session expired (401 error) - fresh login required");
+        } else if (error.response && error.response.status === 400) {
+          this.log.info("Session invalid (400 error - invalid signature) - fresh login required");
+        } else {
+          this.log.debug("Session test failed: " + error.message);
+        }
+        // Clear session to prevent contamination
+        this.session = {};
+        this.cookieJar = new tough.CookieJar();
+        return false;
       }
-
-      this.log.debug("No valid session found for resumption");
-      return false;
     } catch (error) {
       this.log.warn("Error during session resumption: " + error.message);
       return false;
+    }
+  }
+
+  /**
+   * Delete all device objects from ioBroker object tree
+   * Called when account or region changes
+   */
+  async deleteAllDevices() {
+    try {
+      this.log.info("Deleting all device objects...");
+      
+      // Get all objects under this adapter instance
+      const objects = await this.getAdapterObjectsAsync();
+      
+      let deletedCount = 0;
+      for (const id in objects) {
+        // Skip auth channel and info states
+        if (id.includes(".auth.") || id.includes(".info.")) {
+          continue;
+        }
+        
+        // Delete device objects (type: device, channel, or state under devices)
+        const idParts = id.split(".");
+        if (idParts.length >= 3) {
+          // Format: mihome-cloud.0.DEVICE_ID.*
+          const potentialDeviceId = idParts[2];
+          
+          // Skip if this is not a device (auth, info, etc.)
+          if (potentialDeviceId !== "auth" && potentialDeviceId !== "info") {
+            try {
+              await this.delObjectAsync(id, { recursive: true });
+              deletedCount++;
+              this.log.debug("Deleted object: " + id);
+            } catch (err) {
+              this.log.debug("Could not delete " + id + ": " + err.message);
+            }
+          }
+        }
+      }
+      
+      // Clear device arrays
+      this.deviceArray = [];
+      this.deviceDicts = {};
+      
+      this.log.info("Deleted " + deletedCount + " device objects");
+    } catch (error) {
+      this.log.error("Error deleting devices: " + error.message);
     }
   }
 
@@ -1424,6 +1742,8 @@ class MihomeCloud extends utils.Adapter {
         deviceId: this.deviceId,
         session: this.session, // Save session data for resumption
         timestamp: Date.now(),
+        username: this.config.username, // Save username to detect account changes
+        region: this.config.region, // Save region to detect region changes
       };
 
       // Create auth channel if it doesn't exist
@@ -1469,6 +1789,45 @@ class MihomeCloud extends utils.Adapter {
 
       const cookieData = JSON.parse(state.val);
 
+      // Check if username or region has changed - devices need to be deleted
+      const accountChanged = cookieData.username && cookieData.username !== this.config.username;
+      const regionChanged = cookieData.region && cookieData.region !== this.config.region;
+      
+      if (accountChanged) {
+        // Account changed: Delete devices AND invalidate session (need fresh login)
+        this.log.warn("Account credentials changed!");
+        this.log.warn("  Old account: " + cookieData.username);
+        this.log.warn("  New account: " + this.config.username);
+        this.log.warn("  Deleting all old device objects...");
+        await this.deleteAllDevices();
+        this.log.warn("  Clearing old session and performing fresh login...");
+        return false;
+      }
+      
+      if (regionChanged) {
+        // Region changed: Delete devices but KEEP session (session is valid across regions)
+        this.log.warn("Region changed!");
+        this.log.warn("  Old region: " + cookieData.region);
+        this.log.warn("  New region: " + this.config.region);
+        this.log.warn("  Deleting all old device objects...");
+        await this.deleteAllDevices();
+        this.log.info("  Session will be resumed with new region");
+        // Update stored region to new value
+        cookieData.region = this.config.region;
+        // Continue loading the session (don't return false)
+      }
+      
+      // Log for debugging: Show which account's session is being loaded
+      if (cookieData.username) {
+        this.log.info("Loading session for account: " + cookieData.username);
+      }
+      
+      // Additional validation: Check if userId in session matches expected pattern
+      // If username changed but wasn't saved before, userId will be different after fresh login
+      if (cookieData.session && cookieData.session.userId) {
+        this.log.debug("Session contains userId: " + cookieData.session.userId);
+      }
+
       // Check if cookies are not too old (max 24 hours)
       const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
       if (Date.now() - cookieData.timestamp > maxAge) {
@@ -1484,6 +1843,14 @@ class MihomeCloud extends utils.Adapter {
       // Restore session data if available
       if (cookieData.session) {
         this.session = cookieData.session;
+        
+        // Remove any temporary QR-Code URLs that may have been saved
+        // These are only valid for 5 minutes and should never be restored
+        delete this.session.qrImageUrl;
+        delete this.session.loginUrl;
+        delete this.session.longPollingUrl;
+        delete this.session.timeout;
+        
         this.log.debug("Session data restored from state");
       }
 
@@ -1599,16 +1966,22 @@ class MihomeCloud extends utils.Adapter {
         }
         this.log.info(`Send: ${JSON.stringify(data)} to ${deviceId} via ${url}`);
         const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(url, data);
+        const cookieHeader = await this.buildCookieHeader();
         await this.requestClient({
           method: "post",
           url: "https://" + this.config.region + "api.io.mi.com/app" + url,
-          headers: this.header,
-          data: qs.stringify({
+          headers: {
+            ...this.header,
+            Cookie: cookieHeader,
+          },
+          params: {
             _nonce: nonce,
             data: data_rc,
             rc4_hash__: rc4_hash_rc,
             signature: signature,
-          }),
+            ssecurity: this.session.ssecurity,
+          },
+          data: "",
         })
           .then(async (res) => {
             try {
