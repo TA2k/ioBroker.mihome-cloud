@@ -8,7 +8,6 @@
 // you need to create an adapter
 const utils = require("@iobroker/adapter-core");
 const axios = require("axios").default;
-const qs = require("qs");
 const Json2iob = require("json2iob");
 const RC4Crypt = require("./lib/rc4");
 const configDes = require("./lib/configDes");
@@ -91,7 +90,7 @@ class MihomeCloud extends utils.Adapter {
     this.reLoginTimeout = null;
     this.refreshTokenTimeout = null;
     this.session = {};
-    
+
     this.subscribeStates("*");
 
     // Try to load saved cookies first
@@ -100,16 +99,16 @@ class MihomeCloud extends utils.Adapter {
 
     if (cookiesLoaded) {
       this.log.info("Cookies loaded, attempting to resume session...");
-      
+
       // Validate ssecurity - must be done BEFORE trying to use the session
       // Valid ssecurity is typically 24-32 characters (Base64 encoded)
       // Check for corruption: too short (<20) or contains invalid characters
       if (this.session && this.session.ssecurity) {
         this.log.debug("Found ssecurity with length: " + this.session.ssecurity.length + " chars");
-        
+
         // Check if ssecurity is corrupted (too short or contains invalid Base64 characters)
         const isCorrupted = this.session.ssecurity.length < 20 || !/^[A-Za-z0-9+/=]+$/.test(this.session.ssecurity);
-        
+
         if (isCorrupted) {
           this.log.warn("Found corrupted session (ssecurity invalid: " + this.session.ssecurity.length + " chars), clearing for fresh login...");
           this.session = {};
@@ -164,10 +163,10 @@ class MihomeCloud extends utils.Adapter {
   async login() {
     // QR-Code Login (matching Python's QrCodeXiaomiCloudConnector)
     this.log.info("Starting Xiaomi Cloud Login...");
-    
+
     // Clear any old session data to ensure fresh login
     this.session = {};
-    
+
     // Step 1: Get QR code URL
     if (!await this.qrLoginStep1()) {
       this.log.error("Unable to get login QR code");
@@ -217,7 +216,7 @@ class MihomeCloud extends utils.Adapter {
     try {
       this.log.debug("Requesting QR code from: " + url);
       this.log.debug("Request params: " + JSON.stringify(params));
-      
+
       const response = await this.requestClient({
         method: "get",
         url: url,
@@ -234,11 +233,11 @@ class MihomeCloud extends utils.Adapter {
       if (response.status === 200 && response.data) {
         // Parse response data - remove &&&START&&& prefix if present
         let data = response.data;
-        if (typeof data === 'string' && data.indexOf('&&&START&&&') === 0) {
-          data = JSON.parse(data.replace('&&&START&&&', ''));
+        if (typeof data === "string" && data.indexOf("&&&START&&&") === 0) {
+          data = JSON.parse(data.replace("&&&START&&&", ""));
           this.log.debug("Parsed JSON after removing &&&START&&& prefix");
         }
-        
+
         if (data.qr) {
           this.session.qrImageUrl = data.qr;
           this.session.loginUrl = data.loginUrl;
@@ -261,7 +260,7 @@ class MihomeCloud extends utils.Adapter {
       }
       this.log.debug("Error stack: " + error.stack);
     }
-    
+
     return false;
   }
 
@@ -282,10 +281,6 @@ class MihomeCloud extends utils.Adapter {
       });
 
       if (response.status === 200) {
-        // Convert image to base64 data URL
-        const base64Image = Buffer.from(response.data, "binary").toString("base64");
-        const dataUrl = `data:image/png;base64,${base64Image}`;
-
         this.log.info("════════════════════════════════════════════════════════");
         this.log.info("  XIAOMI CLOUD LOGIN REQUIRED");
         this.log.info("════════════════════════════════════════════════════════");
@@ -320,6 +315,7 @@ class MihomeCloud extends utils.Adapter {
     this.log.info("Login valid for " + (timeoutMs / 1000) + " seconds");
 
     // Start long polling
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       // Check if overall timeout exceeded BEFORE making request
       const elapsed = Date.now() - startTime;
@@ -330,7 +326,7 @@ class MihomeCloud extends utils.Adapter {
 
       try {
         this.log.debug("Long polling attempt (elapsed: " + Math.round(elapsed / 1000) + "s / " + Math.round(timeoutMs / 1000) + "s)...");
-        
+
         const response = await this.requestClient({
           method: "get",
           url: url,
@@ -342,18 +338,18 @@ class MihomeCloud extends utils.Adapter {
         if (response.status === 200) {
           // Parse response data - remove &&&START&&& prefix if present
           let data = response.data;
-          if (typeof data === 'string' && data.indexOf('&&&START&&&') === 0) {
-            const jsonString = data.replace('&&&START&&&', '');
+          if (typeof data === "string" && data.indexOf("&&&START&&&") === 0) {
+            const jsonString = data.replace("&&&START&&&", "");
             data = JSON.parse(jsonString);
             this.log.debug("Parsed JSON after removing &&&START&&& prefix from long-polling response");
             this.log.debug("Full parsed data: " + JSON.stringify(data));
           }
-          
+
           // Check if data contains the required fields
           if (data && data.userId && data.location) {
             // Success! User scanned the QR code
             this.log.info("Login completed successfully!");
-            
+
             this.session.userId = data.userId;
             this.session.ssecurity = data.ssecurity;
             this.session.cUserId = data.cUserId;
@@ -421,7 +417,7 @@ class MihomeCloud extends utils.Adapter {
         // Extract serviceToken from cookies
         const cookies = await this.cookieJar.getCookies(location);
         let serviceToken = null;
-        
+
         for (const cookie of cookies) {
           if (cookie.key === "serviceToken") {
             serviceToken = cookie.value;
@@ -431,10 +427,10 @@ class MihomeCloud extends utils.Adapter {
 
         // Fallback: check Set-Cookie headers
         if (!serviceToken && response.headers["set-cookie"]) {
-          const setCookies = Array.isArray(response.headers["set-cookie"]) 
-            ? response.headers["set-cookie"] 
+          const setCookies = Array.isArray(response.headers["set-cookie"])
+            ? response.headers["set-cookie"]
             : [response.headers["set-cookie"]];
-          
+
           for (const cookieStr of setCookies) {
             if (cookieStr.includes("serviceToken=")) {
               const match = cookieStr.match(/serviceToken=([^;]+)/);
@@ -461,7 +457,7 @@ class MihomeCloud extends utils.Adapter {
           { domain: ".io.mi.com", url: "https://io.mi.com" },
           { domain: ".mi.com", url: "https://mi.com" }
         ];
-        
+
         for (const {domain, url} of apiDomains) {
           await this.cookieJar.setCookie(`serviceToken=${serviceToken}; Domain=${domain}; Path=/`, url);
           await this.cookieJar.setCookie(`yetAnotherServiceToken=${serviceToken}; Domain=${domain}; Path=/`, url);
@@ -476,10 +472,10 @@ class MihomeCloud extends utils.Adapter {
         delete this.session.loginUrl;
         delete this.session.longPollingUrl;
         delete this.session.timeout;
-        
+
         // Save cookies
         await this.saveCookies();
-        
+
         // Set connection state
         this.setState("info.connection", true, true);
 
@@ -495,14 +491,14 @@ class MihomeCloud extends utils.Adapter {
 
   async getDeviceList() {
     this.log.info("Get devices");
-    
+
     const path = "/v2/home/device_list_page";
     const data = { get_split_device: true, support_smart_home: true, accessKey: "IOS00026747c5acafc2", limit: 300 };
     const { nonce, data_rc, rc4_hash_rc, signature, signedNonce } = this.createBody(path, data);
 
     // Build headers with correct API headers
     const headers = await this.buildApiHeaders();
-    
+
     await axios({
       method: "post",
       url: "https://" + this.config.region + "api.io.mi.com/app" + path,
@@ -1220,16 +1216,16 @@ class MihomeCloud extends utils.Adapter {
     // requests combines this with session cookies automatically
     // We need to manually build the cookie header from ALL cookies in the jar
     // plus the explicit ones that Python sets
-    
+
     const targetDomain = "https://" + this.config.region + "api.io.mi.com";
     const allCookies = await this.cookieJar.getCookies(targetDomain);
-    
+
     // Start with cookies from jar
     const cookieMap = {};
     for (const cookie of allCookies) {
       cookieMap[cookie.key] = cookie.value;
     }
-    
+
     // Override/add the explicit cookies that Python sets
     // (these match what Python passes in the cookies parameter)
     cookieMap["userId"] = this.session.userId || cookieMap["userId"];
@@ -1240,16 +1236,16 @@ class MihomeCloud extends utils.Adapter {
     cookieMap["is_daylight"] = "0";
     cookieMap["dst_offset"] = "3600000";
     cookieMap["channel"] = "MI_APP_STORE";
-    
+
     this.log.debug(`buildCookieHeader: Using userId=${cookieMap["userId"]} (session.userId=${this.session.userId})`);
     this.log.debug(`buildCookieHeader: Using serviceToken=${cookieMap["serviceToken"]?.substring(0, 30)}...`);
-    
+
     if (!cookieMap["serviceToken"]) {
       this.log.error("buildCookieHeader: serviceToken is missing!");
       this.log.error("Session keys: " + Object.keys(this.session).join(", "));
       this.log.error("Available cookies: " + Object.keys(cookieMap).join(", "));
     }
-    
+
     // Build cookie header string
     return Object.entries(cookieMap).map(([k, v]) => `${k}=${v}`).join("; ");
   }
@@ -1260,15 +1256,15 @@ class MihomeCloud extends utils.Adapter {
       this.log.error("Session keys: " + Object.keys(this.session).join(", "));
       throw new Error("ssecurity is required but not found in session");
     }
-    
+
     // Python does: url.split("com")[1].replace("/app/", "/")
     // So /app/v2/home/device_list_page becomes /v2/home/device_list_page
     const normalizedPath = path.replace("/app/", "/");
-    
+
     this.log.debug(`Creating body for ${path} (normalized: ${normalizedPath}) with ssecurity: ${this.session.ssecurity.substring(0, 20)}...`);
     const nonce = this.generateNonce();
     const signedNonce = this.signedNonce(this.session.ssecurity, nonce);
-    
+
     // Python algorithm matches exactly:
     // 1. params["rc4_hash__"] = generate_enc_signature(url, method, signed_nonce, params)
     //    where params = {"data": {...}} (unencrypted)
@@ -1276,33 +1272,33 @@ class MihomeCloud extends utils.Adapter {
     //    This encrypts BOTH data AND rc4_hash__!
     // 3. params.update({"signature": generate_enc_signature(url, method, signed_nonce, params), ...})
     //    Signature calculated with encrypted params
-    
+
     // Step 1: Calculate rc4_hash__ with UNENCRYPTED data param
     const dataStr = JSON.stringify(data);
     let signatureParams = ["POST", normalizedPath, `data=${dataStr}`, signedNonce];
     this.log.debug(`Step 1 - Signature params (unencrypted): POST & ${normalizedPath} & data=... & signedNonce`);
     const rc4_hash = crypto.createHash("sha1").update(signatureParams.join("&"), "utf8").digest("base64");
     this.log.debug(`Step 1 - rc4_hash (unencrypted): ${rc4_hash}`);
-    
+
     // Step 2: Encrypt data
     const rc4_1 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
     const data_rc = rc4_1.encode(dataStr);
     this.log.debug(`Step 2a - Encrypted data (first 50 chars): ${data_rc.substring(0, 50)}`);
-    
+
     // Step 2b: Encrypt rc4_hash__ (Python does this in the for loop)
     const rc4_2 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
     const rc4_hash_rc = rc4_2.encode(rc4_hash);
     this.log.debug(`Step 2b - Encrypted rc4_hash: ${rc4_hash_rc}`);
-    
+
     // Step 3: Calculate final signature with ENCRYPTED params (both data and rc4_hash__)
     signatureParams = ["POST", normalizedPath, `data=${data_rc}`, `rc4_hash__=${rc4_hash_rc}`, signedNonce];
     this.log.debug(`Step 3 - Signature params (encrypted): POST & ${normalizedPath} & data=... & rc4_hash__=... & signedNonce`);
     const signature = crypto.createHash("sha1").update(signatureParams.join("&"), "utf8").digest("base64");
     this.log.debug(`Step 3 - Final signature: ${signature}`);
-    
+
     // Create RC4 instance for decoding the response
     const rc4 = new RC4Crypt(Buffer.from(signedNonce, "base64"), 1024);
-    
+
     return { nonce, data_rc, rc4_hash_rc, signature, signedNonce, rc4 };
   }
   getRole(element, write, valueRange) {
@@ -1675,23 +1671,23 @@ class MihomeCloud extends utils.Adapter {
   async deleteAllDevices() {
     try {
       this.log.info("Deleting all device objects...");
-      
+
       // Get all objects under this adapter instance
       const objects = await this.getAdapterObjectsAsync();
-      
+
       let deletedCount = 0;
       for (const id in objects) {
         // Skip auth channel and info states
         if (id.includes(".auth.") || id.includes(".info.")) {
           continue;
         }
-        
+
         // Delete device objects (type: device, channel, or state under devices)
         const idParts = id.split(".");
         if (idParts.length >= 3) {
           // Format: mihome-cloud.0.DEVICE_ID.*
           const potentialDeviceId = idParts[2];
-          
+
           // Skip if this is not a device (auth, info, etc.)
           if (potentialDeviceId !== "auth" && potentialDeviceId !== "info") {
             try {
@@ -1704,11 +1700,11 @@ class MihomeCloud extends utils.Adapter {
           }
         }
       }
-      
+
       // Clear device arrays
       this.deviceArray = [];
       this.deviceDicts = {};
-      
+
       this.log.info("Deleted " + deletedCount + " device objects");
     } catch (error) {
       this.log.error("Error deleting devices: " + error.message);
@@ -1775,7 +1771,7 @@ class MihomeCloud extends utils.Adapter {
       // Check if username or region has changed - devices need to be deleted
       const accountChanged = cookieData.username && cookieData.username !== this.config.username;
       const regionChanged = cookieData.region && cookieData.region !== this.config.region;
-      
+
       if (accountChanged) {
         // Account changed: Delete devices AND invalidate session (need fresh login)
         this.log.warn("Account credentials changed!");
@@ -1786,7 +1782,7 @@ class MihomeCloud extends utils.Adapter {
         this.log.warn("  Clearing old session and performing fresh login...");
         return false;
       }
-      
+
       if (regionChanged) {
         // Region changed: Delete devices but KEEP session (session is valid across regions)
         this.log.warn("Region changed!");
@@ -1799,12 +1795,12 @@ class MihomeCloud extends utils.Adapter {
         cookieData.region = this.config.region;
         // Continue loading the session (don't return false)
       }
-      
+
       // Log for debugging: Show which account's session is being loaded
       if (cookieData.username) {
         this.log.info("Loading session for account: " + cookieData.username);
       }
-      
+
       // Additional validation: Check if userId in session matches expected pattern
       // If username changed but wasn't saved before, userId will be different after fresh login
       if (cookieData.session && cookieData.session.userId) {
@@ -1819,14 +1815,14 @@ class MihomeCloud extends utils.Adapter {
       // Restore session data if available
       if (cookieData.session) {
         this.session = cookieData.session;
-        
+
         // Remove any temporary QR-Code URLs that may have been saved
         // These are only valid for 5 minutes and should never be restored
         delete this.session.qrImageUrl;
         delete this.session.loginUrl;
         delete this.session.longPollingUrl;
         delete this.session.timeout;
-        
+
         this.log.debug("Session data restored from state");
       }
 
