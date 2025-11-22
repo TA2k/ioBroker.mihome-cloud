@@ -157,12 +157,9 @@ class MihomeCloud extends utils.Adapter {
         this.config.interval * 60 * 1000,
       );
     }
-    this.refreshTokenInterval = setInterval(
-      () => {
-        this.refreshToken();
-      },
-      12 * 60 * 60 * 1000,
-    );
+    // Note: Automatic token refresh disabled - with manual QR-code login,
+    // the session remains valid indefinitely (until server-side invalidation).
+    // No need for periodic re-authentication.
   }
   async login() {
     // QR-Code Login (matching Python's QrCodeXiaomiCloudConnector)
@@ -1576,23 +1573,12 @@ class MihomeCloud extends utils.Adapter {
     return resultData;
   }
   async refreshToken() {
-    this.log.debug("Refresh token");
-    try {
-      const loginSuccess = await this.login();
-      if (!loginSuccess) {
-        this.log.warn("Token refresh failed, will retry in 5 minutes");
-        this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-        this.refreshTokenTimeout = setTimeout(
-          () => {
-            this.refreshToken();
-          },
-          5 * 60 * 1000,
-        ); // Retry in 5 minutes
-      }
-    } catch (error) {
-      this.log.error("Error during token refresh:", error);
-      this.setState("info.connection", false, true);
-    }
+    // Note: With manual QR-code authentication, automatic token refresh is not possible.
+    // The session remains valid indefinitely until server-side invalidation.
+    // If a 401 error occurs, the user needs to manually restart the adapter to trigger a new login.
+    this.log.warn("Session appears to be invalid (401 error)");
+    this.log.warn("Please check your adapter configuration and restart the adapter to re-authenticate");
+    this.setState("info.connection", false, true);
   }
 
   generateNonce() {
