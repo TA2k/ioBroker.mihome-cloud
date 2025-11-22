@@ -1,9 +1,9 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "news": {
-      "0.2.0": {
+      "0.2.1": {
         "en": "Fix login. Check Log after starting Adapter",
         "de": "Login Problem behoben. Bitte überprüfe den Log nach dem Starten des Adapters"
       },
