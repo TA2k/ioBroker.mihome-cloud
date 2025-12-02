@@ -868,7 +868,6 @@ class MihomeCloud extends utils.Adapter {
         let min = undefined;
         let max = undefined;
         let states = undefined;
-        let write = true;
 
         if (prop.switchStatus) {
           type = "boolean";
@@ -917,7 +916,7 @@ class MihomeCloud extends utils.Adapter {
             max: max,
             states: states,
             unit: prop.prop_unit,
-            write: write,
+            write: true,
             read: true,
           },
           native: {
