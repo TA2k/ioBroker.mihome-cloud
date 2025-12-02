@@ -34,8 +34,6 @@ class MihomeCloud extends utils.Adapter {
     this.QR_CODE_TIMEOUT = 300; // QR code valid for 5 minutes (seconds)
     this.LONG_POLL_TIMEOUT = 10000; // Long polling timeout per request (ms)
     this.EVENT_AUTO_RESET_DELAY = 5000; // Auto-reset events after 5 seconds
-    this.REFRESH_STATE_DELAY = 10000; // Delay before refreshing state after command (ms)
-    this.TOKEN_REFRESH_DELAY = 60000; // Delay before token refresh on 401 (ms)
 
     // Device tracking
     this.deviceArray = [];
@@ -45,7 +43,7 @@ class MihomeCloud extends utils.Adapter {
     this.remoteCommands = {};
     this.specStatusDict = {};
     this.specPropsToIdDict = {};
-    this.specActiosnToIdDict = {};
+    this.specActionsToIdDict = {};
     this.specEventsToIdDict = {};
     this.customPropsDict = {}; // Track custom properties for polling
     this.vacuumStatusDevices = []; // Track devices that support get_status (vacuums, etc.)
@@ -79,10 +77,6 @@ class MihomeCloud extends utils.Adapter {
       this.log.info("Set interval to minimum 0.5");
       this.config.interval = 0.5;
     }
-    if (!this.config.username || !this.config.password) {
-      this.log.error("Please set username and password in the instance settings");
-      return;
-    }
     this.header = {
       "miot-encrypt-algorithm": "ENCRYPT-RC4",
       "content-type": "application/x-www-form-urlencoded",
@@ -101,7 +95,6 @@ class MihomeCloud extends utils.Adapter {
     };
     this.config.region = this.config.region === "cn" ? "" : this.config.region + ".";
     this.updateInterval = null;
-    this.reLoginTimeout = null;
     this.refreshTokenTimeout = null;
     this.session = {};
 
@@ -166,6 +159,7 @@ class MihomeCloud extends utils.Adapter {
       await this.login();
     }
 
+    // Initial device fetch if we have a valid session
     if (this.session.ssecurity) {
       await this.getDeviceList();
       await this.updateDevicesViaSpec();
@@ -174,33 +168,40 @@ class MihomeCloud extends utils.Adapter {
       await this.updateVacuumStatus();
       await this.getHome();
       await this.getActions();
-      this.updateInterval = setInterval(
-        async () => {
-          // If we have session credentials but connection is false, try to re-validate session
-          const connectionState = await this.getStateAsync("info.connection");
-          if (this.session.ssecurity && connectionState && !connectionState.val) {
-            this.log.info("Connection lost - attempting to re-validate session...");
-            const sessionResumed = await this.resumeSession();
-            if (sessionResumed) {
-              this.log.info("Session re-validated successfully, resuming updates");
-            } else if (!this.session.ssecurity) {
-              // Session was cleared due to authentication error
-              this.log.warn("Session validation failed, attempting fresh login...");
-              await this.login();
-            } else {
-              // Network error persists - skip this update cycle
-              this.log.debug("Network error persists, skipping update cycle");
-              return;
-            }
+    }
+
+    // ALWAYS set up polling interval, even if initial connection failed
+    // The interval will handle reconnection attempts
+    this.updateInterval = setInterval(
+      async () => {
+        // If we have session credentials but connection is false, try to re-validate session
+        const connectionState = await this.getStateAsync("info.connection");
+        if (this.session.ssecurity && connectionState && !connectionState.val) {
+          this.log.info("Connection lost - attempting to re-validate session...");
+          const sessionResumed = await this.resumeSession();
+          if (sessionResumed) {
+            this.log.info("Session re-validated successfully, resuming updates");
+          } else if (!this.session.ssecurity) {
+            // Session was cleared due to authentication error
+            this.log.warn("Session validation failed, attempting fresh login...");
+            await this.login();
+          } else {
+            // Network error persists - skip this update cycle
+            this.log.debug("Network error persists, skipping update cycle");
+            return;
           }
+        }
+
+        // Only poll if we have a valid session
+        if (this.session.ssecurity) {
           await this.updateDevicesViaSpec();
           await this.updateDevices();
           await this.updateCustomStates();
           await this.updateVacuumStatus();
-        },
-        this.config.interval * 60 * 1000,
-      );
-    }
+        }
+      },
+      this.config.interval * 60 * 1000,
+    );
     // Note: Automatic token refresh disabled - with manual QR-code login,
     // the session remains valid indefinitely (until server-side invalidation).
     // No need for periodic re-authentication.
@@ -326,15 +327,15 @@ class MihomeCloud extends utils.Adapter {
       });
 
       if (response.status === 200) {
-        this.log.info("════════════════════════════════════════════════════════");
-        this.log.info("  XIAOMI CLOUD LOGIN REQUIRED");
-        this.log.info("════════════════════════════════════════════════════════");
-        this.log.info("");
-        this.log.info("Please visit this URL in your browser and log in:");
-        this.log.info(this.session.loginUrl);
-        this.log.info("");
-        this.log.info("After logging in, the adapter will automatically continue.");
-        this.log.info("════════════════════════════════════════════════════════");
+        this.log.warn("════════════════════════════════════════════════════════");
+        this.log.warn("  XIAOMI CLOUD LOGIN REQUIRED");
+        this.log.warn("════════════════════════════════════════════════════════");
+        this.log.warn("");
+        this.log.warn("Please visit this URL in your browser and log in:");
+        this.log.warn(this.session.loginUrl);
+        this.log.warn("");
+        this.log.warn("After logging in, the adapter will automatically continue.");
+        this.log.warn("════════════════════════════════════════════════════════");
 
         return true;
       }
@@ -647,7 +648,7 @@ class MihomeCloud extends utils.Adapter {
                 this.setObjectNotExists(device.did + ".remotePlugins." + name, {
                   type: "state",
                   common: {
-                    name: name + " " + params || "",
+                    name: name + " " + (params || ""),
                     type: "mixed",
                     role: "state",
                     def: false,
@@ -947,7 +948,7 @@ class MihomeCloud extends utils.Adapter {
     let siid = 0;
     this.specStatusDict[device.did] = [];
 
-    this.specActiosnToIdDict[device.did] = {};
+    this.specActionsToIdDict[device.did] = {};
     this.specPropsToIdDict[device.did] = {};
     this.specEventsToIdDict[device.did] = {};
 
@@ -1036,15 +1037,6 @@ class MihomeCloud extends utils.Adapter {
             // Process property
             const property_data = { property, piid, siid, service, folder, write };
 
-            const remote = {
-              siid: property_data.siid,
-              piid: property_data.piid,
-              did: device.did,
-              model: device.model,
-              name: property_data.service.description + " " + property_data.property.description,
-              type: property_data.property.type,
-              access: property_data.property.access,
-            };
             const typeName = property_data.property.type.split(":")[3].replace(/\./g, "_");
 
             // First occurrence gets clean name, subsequent ones get service prefix
@@ -1109,14 +1101,14 @@ class MihomeCloud extends utils.Adapter {
             if (property_data.property.access.includes("read")) {
               this.specStatusDict[device.did].push({
                 did: device.did,
-                siid: remote.siid,
+                siid: property_data.siid,
                 code: 0,
-                piid: remote.piid,
+                piid: property_data.piid,
                 updateTime: 0,
               });
             }
 
-            this.specPropsToIdDict[device.did][remote.siid + "-" + remote.piid] = device.did + "." + propertyPath;
+            this.specPropsToIdDict[device.did][property_data.siid + "-" + property_data.piid] = device.did + "." + propertyPath;
           }
         }
 
@@ -1215,7 +1207,7 @@ class MihomeCloud extends utils.Adapter {
                 access: action.access,
               },
             });
-            this.specActiosnToIdDict[device.did][service.iid + "-" + action.iid] = device.did + "." + actionPath;
+            this.specActionsToIdDict[device.did][service.iid + "-" + action.iid] = device.did + "." + actionPath;
           }
         }
 
@@ -1375,10 +1367,9 @@ class MihomeCloud extends utils.Adapter {
       .then(async (res) => {
         try {
           const result = JSON.parse(rc4.decode(res.data)).result;
-          for (const device of result.tpl) {
-            this.log.debug(device.model);
-            this.log.debug(JSON.stringify(device.value.action_list));
-          }
+          // Actions data available in result.tpl but not currently used
+          // Each device has: model, name, value.action_list with sa_id, payload.command, etc.
+          this.log.debug(`Fetched ${result.tpl.length} action templates from Xiaomi Cloud`);
         } catch (error) {
           this.log.error(error);
           return;
@@ -1611,12 +1602,8 @@ class MihomeCloud extends utils.Adapter {
             if (error.response) {
               if (error.response.status === 401) {
                 error.response && this.log.debug(JSON.stringify(error.response.data));
-                this.log.info(element.path + " receive 401 error. Refresh Token in " + this.TOKEN_REFRESH_DELAY / 1000 + " seconds");
-                this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-                this.refreshTokenTimeout = setTimeout(() => {
-                  this.refreshToken();
-                }, this.TOKEN_REFRESH_DELAY);
-
+                this.log.warn(element.path + " receive 401 error - session may be invalid");
+                this.setState("info.connection", false, true);
                 return;
               }
             }
@@ -2298,7 +2285,7 @@ class MihomeCloud extends utils.Adapter {
         deviceId: this.deviceId,
         session: this.session, // Save session data for resumption
         timestamp: Date.now(),
-        username: this.config.username, // Save username to detect account changes
+        userId: this.session.userId, // Save userId to detect account changes
         region: this.config.region, // Save region to detect region changes
       };
 
@@ -2343,17 +2330,18 @@ class MihomeCloud extends utils.Adapter {
         return false;
       }
 
-      const cookieData = JSON.parse(state.val);
+      const cookieData = JSON.parse(String(state.val));
 
-      // Check if username or region has changed - devices need to be deleted
-      const accountChanged = cookieData.username && cookieData.username !== this.config.username;
+      // Check if userId or region has changed - devices need to be deleted
+      // Note: userId comes from Xiaomi server after QR login, not from config
+      const accountChanged = cookieData.userId && this.session.userId && cookieData.userId !== this.session.userId;
       const regionChanged = cookieData.region && cookieData.region !== this.config.region;
 
       if (accountChanged) {
         // Account changed: Delete devices AND invalidate session (need fresh login)
-        this.log.warn("Account credentials changed!");
-        this.log.warn("  Old account: " + cookieData.username);
-        this.log.warn("  New account: " + this.config.username);
+        this.log.warn("Account changed!");
+        this.log.warn("  Old userId: " + cookieData.userId);
+        this.log.warn("  New userId: " + this.session.userId);
         this.log.warn("  Deleting all old device objects...");
         await this.deleteAllDevices();
         this.log.warn("  Clearing old session and performing fresh login...");
@@ -2420,10 +2408,8 @@ class MihomeCloud extends utils.Adapter {
     try {
       this.setState("info.connection", false, true);
       this.refreshTimeout && clearTimeout(this.refreshTimeout);
-      this.reLoginTimeout && clearTimeout(this.reLoginTimeout);
       this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
       this.updateInterval && clearInterval(this.updateInterval);
-      this.refreshTokenInterval && clearInterval(this.refreshTokenInterval);
       callback();
     } catch (e) {
       callback();
@@ -2455,7 +2441,7 @@ class MihomeCloud extends utils.Adapter {
         let params = [];
         if (stateObject && stateObject.common.type === "mixed") {
           try {
-            params = JSON.parse(state.val);
+            params = JSON.parse(String(state.val));
           } catch (error) {
             this.log.debug(error);
           }
@@ -2476,7 +2462,7 @@ class MihomeCloud extends utils.Adapter {
           url = "/home/rpc/" + deviceId;
           params = state.val;
           if (id.includes("remotePlugins.customCommand")) {
-            const stateArray = state.val.replace(/ /g, "").split(",");
+            const stateArray = String(state.val).replace(/ /g, "").split(",");
             command = stateArray[0];
             params = stateArray[1];
           }
@@ -2527,7 +2513,7 @@ class MihomeCloud extends utils.Adapter {
             };
             if (typeof state.val !== "boolean") {
               try {
-                data.params["in"] = JSON.parse(state.val);
+                data.params["in"] = JSON.parse(String(state.val));
               } catch (error) {
                 this.log.error(error);
                 return;
@@ -2577,7 +2563,7 @@ class MihomeCloud extends utils.Adapter {
             }
             const result = res.data.result;
             if (result.out) {
-              const path = this.specActiosnToIdDict[result.did][result.siid + "-" + result.aiid];
+              const path = this.specActionsToIdDict[result.did][result.siid + "-" + result.aiid];
               this.log.debug(path);
               const stateObject = await this.getObjectAsync(path);
               if (stateObject && stateObject.native.out) {
@@ -2597,11 +2583,12 @@ class MihomeCloud extends utils.Adapter {
             this.log.error(error);
             error.response && this.log.error(JSON.stringify(error.response.data));
           });
+        // Refresh device state after command
         this.refreshTimeout = setTimeout(async () => {
           this.log.debug("Update devices");
           await this.updateDevices();
           await this.updateDevicesViaSpec();
-        }, this.REFRESH_STATE_DELAY);
+        }, 10000); // 10 seconds delay
       } else {
         const resultDict = {
           auto_target_humidity: "setTargetHumidity",

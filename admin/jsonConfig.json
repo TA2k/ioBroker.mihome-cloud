@@ -2,41 +2,26 @@
   "type": "panel",
   "i18n": false,
   "items": {
-    "username": {
-      "type": "text",
-      "label": {
-        "en": "App Email",
-        "de": "App-E-Mail",
-        "ru": "Электронная почта приложения",
-        "pt": "Email do aplicativo",
-        "nl": "App-e-mail",
-        "fr": "Courriel de l'application",
-        "it": "E-mail dell'app",
-        "es": "Correo electrónico de la aplicación",
-        "pl": "E-mail aplikacji",
-        "zh-cn": "应用电子邮件"
+    "_authInfo": {
+      "type": "staticText",
+      "text": {
+        "en": "ℹ️ How to login: After saving the settings and starting the adapter, a login URL will appear in the adapter log. Open this URL in your browser and log in with your Xiaomi account. The adapter will then automatically connect.",
+        "de": "ℹ️ So melden Sie sich an: Nach dem Speichern der Einstellungen und dem Starten des Adapters erscheint eine Login-URL im Adapter-Log. Öffnen Sie diese URL in Ihrem Browser und melden Sie sich mit Ihrem Xiaomi-Konto an. Der Adapter verbindet sich dann automatisch.",
+        "ru": "ℹ️ Как войти: После сохранения настроек и запуска адаптера в журнале адаптера появится URL для входа. Откройте этот URL в браузере и войдите в свою учетную запись Xiaomi. Адаптер подключится автоматически.",
+        "pt": "ℹ️ Como fazer login: Após salvar as configurações e iniciar o adaptador, um URL de login aparecerá no log do adaptador. Abra este URL no navegador e faça login com sua conta Xiaomi. O adaptador se conectará automaticamente.",
+        "nl": "ℹ️ Inloggen: Na het opslaan van de instellingen en het starten van de adapter verschijnt er een inlog-URL in het adapter-logboek. Open deze URL in uw browser en log in met uw Xiaomi-account. De adapter maakt dan automatisch verbinding.",
+        "fr": "ℹ️ Comment se connecter : Après avoir enregistré les paramètres et démarré l'adaptateur, une URL de connexion apparaîtra dans le journal de l'adaptateur. Ouvrez cette URL dans votre navigateur et connectez-vous avec votre compte Xiaomi. L'adaptateur se connectera alors automatiquement.",
+        "it": "ℹ️ Come accedere: Dopo aver salvato le impostazioni e avviato l'adattatore, un URL di accesso apparirà nel registro dell'adattatore. Apri questo URL nel browser e accedi con il tuo account Xiaomi. L'adattatore si connetterà automaticamente.",
+        "es": "ℹ️ Cómo iniciar sesión: Después de guardar la configuración e iniciar el adaptador, aparecerá una URL de inicio de sesión en el registro del adaptador. Abra esta URL en su navegador e inicie sesión con su cuenta Xiaomi. El adaptador se conectará automáticamente.",
+        "pl": "ℹ️ Jak się zalogować: Po zapisaniu ustawień i uruchomieniu adaptera w dzienniku adaptera pojawi się adres URL logowania. Otwórz ten adres URL w przeglądarce i zaloguj się na swoje konto Xiaomi. Adapter połączy się automatycznie.",
+        "zh-cn": "ℹ️ 如何登录：保存设置并启动适配器后，适配器日志中将显示登录URL。在浏览器中打开此URL并使用您的小米帐户登录。适配器将自动连接。"
+      },
+      "style": {
+        "fontSize": "16px",
+        "fontWeight": "500"
       },
       "newLine": true,
-      "sm": 3
-    },
-    "password": {
-      "type": "password",
-      "newLine": true,
-      "repeat": false,
-      "visible": true,
-      "sm": 3,
-      "label": {
-        "en": "App Password",
-        "de": "App-Passwort",
-        "ru": "Пароль приложения",
-        "pt": "Senha de app",
-        "nl": "App-wachtwoord",
-        "fr": "Mot de passe de l'application",
-        "it": "Password dell'app",
-        "es": "Contraseña de la aplicación",
-        "pl": "Hasło do aplikacji",
-        "zh-cn": "应用密码"
-      }
+      "sm": 12
     },
     "region": {
       "type": "select",
@@ -82,7 +67,6 @@
         "zh-cn": "区域"
       }
     },
-
     "interval": {
       "type": "number",
       "newLine": true,
