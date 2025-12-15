@@ -74,7 +74,6 @@
     "keywords": ["MiHome", "Cloud"],
     "license": "MIT",
     "platform": "Javascript/Node.js",
-    "main": "main.js",
     "icon": "mihome-cloud.png",
     "enabled": true,
     "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.mihome-cloud/main/admin/mihome-cloud.png",
