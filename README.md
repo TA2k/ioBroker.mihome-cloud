@@ -181,6 +181,9 @@ Format ["10",0,1]
 
 ## Changelog
 
+### **WORK IN PROGRESS**
+- (iobroker-bot) Adapter requires node.js >= 20 now.
+
 ### 0.2.0
 
 - (lubepi) Fix login
