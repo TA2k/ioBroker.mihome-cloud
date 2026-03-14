@@ -1,11 +1,11 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "0.2.2",
+    "version": "1.0.0",
     "news": {
       "1.0.0": {
         "en": "Complete rewrite with QR-code login\nImproved error handling for network interruptions (ECONNRESET, DB closed)\nUpdated dependencies and fixed known vulnerabilities\nAdded all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nUpdated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nAdded release-script support",
-        "de": "Vollständige Neugestaltung mit QR-Code-Anmeldung\nVerbesserte Fehlerbehandlung bei Netzunterbrechungen (ECONNRESET, DB geschlossen)\nAktualisierte Abhängigkeiten und feste bekannte Schwachstellen\nAlle fehlenden Übersetzungen hinzugefügt (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAktualisiert auf Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint zu flachem Einbruch\nUnterstützung für Release-script",
+        "de": "Vollständige Neugestaltung mit QR-Code-Anmeldung\nVerbesserte Fehlerbehandlung bei Netzunterbrechungen (ECONNRESET, DB geschlossen)\nAktualisierte Abhängigkeiten und feste bekannte Schwachstellen\nAlle fehlenden Übersetzungen hinzugefügt (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAktualisiert auf Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint auf Flat-Config migriert\nUnterstützung für Release-Script",
         "ru": "Полная перезапись с QR-кодом\nУлучшенная обработка ошибок при прерываниях сети (ECONNRESET, DB закрыт)\nОбновленные зависимости и исправленные известные уязвимости\nДобавлены все недостающие переводы (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОбновлено до Node.js >= 20, js-контроллер >= 6.0.11, админ >= 7.6.20\nМиграция ESLint в плоскую конфигурацию\nДобавлена поддержка release-script",
         "pt": "Reescrita completa com login de QR-code\nMelhor manipulação de erros para interrupções de rede (ECONNRESET, DB fechado)\nDependências atualizadas e vulnerabilidades conhecidas fixas\nAdicionadas todas as traduções em falta (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAtualizado em Node.js >= 20, js-controlador >= 6.0.11, administrador >= 7.6.20\nESLint migrado para a configuração plana\nAdicionado suporte de versão- script",
         "nl": "Complete herschrijving met QR-code login\nVerbeterde foutafhandeling voor netwerkonderbrekingen (ECONNRESET, DB gesloten)\nBijgewerkte afhankelijkheden en vaste bekende kwetsbaarheden\nToegevoegd alle ontbrekende vertalingen (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nBijgewerkt aan Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint naar platte configuratie migreren\nRelease-script ondersteuning toegevoegd",
