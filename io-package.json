@@ -3,6 +3,19 @@
     "name": "mihome-cloud",
     "version": "0.2.2",
     "news": {
+      "1.0.0": {
+        "en": "Complete rewrite with QR-code login\nImproved error handling for network interruptions (ECONNRESET, DB closed)\nUpdated dependencies and fixed known vulnerabilities\nAdded all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nUpdated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nAdded release-script support",
+        "de": "Vollständige Neugestaltung mit QR-Code-Anmeldung\nVerbesserte Fehlerbehandlung bei Netzunterbrechungen (ECONNRESET, DB geschlossen)\nAktualisierte Abhängigkeiten und feste bekannte Schwachstellen\nAlle fehlenden Übersetzungen hinzugefügt (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAktualisiert auf Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint zu flachem Einbruch\nUnterstützung für Release-script",
+        "ru": "Полная перезапись с QR-кодом\nУлучшенная обработка ошибок при прерываниях сети (ECONNRESET, DB закрыт)\nОбновленные зависимости и исправленные известные уязвимости\nДобавлены все недостающие переводы (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОбновлено до Node.js >= 20, js-контроллер >= 6.0.11, админ >= 7.6.20\nМиграция ESLint в плоскую конфигурацию\nДобавлена поддержка release-script",
+        "pt": "Reescrita completa com login de QR-code\nMelhor manipulação de erros para interrupções de rede (ECONNRESET, DB fechado)\nDependências atualizadas e vulnerabilidades conhecidas fixas\nAdicionadas todas as traduções em falta (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAtualizado em Node.js >= 20, js-controlador >= 6.0.11, administrador >= 7.6.20\nESLint migrado para a configuração plana\nAdicionado suporte de versão- script",
+        "nl": "Complete herschrijving met QR-code login\nVerbeterde foutafhandeling voor netwerkonderbrekingen (ECONNRESET, DB gesloten)\nBijgewerkte afhankelijkheden en vaste bekende kwetsbaarheden\nToegevoegd alle ontbrekende vertalingen (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nBijgewerkt aan Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint naar platte configuratie migreren\nRelease-script ondersteuning toegevoegd",
+        "fr": "Réécriture complète avec connexion QR-code\nAmélioration du traitement des erreurs pour les interruptions de réseau (ECONNESET, DB fermée)\nDépendances actualisées et vulnérabilités connues fixes\nAjout de toutes les traductions manquantes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nMise à jour sur Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigré ESLint en configuration plate\nAjout d'un support de release-script",
+        "it": "Riscrittura completa con login QR-code\nGestione degli errori migliorata per interruzioni di rete (ECONNRESET, DB chiuso)\nDipendenze aggiornate e vulnerabilità note fisse\nAggiunto tutte le traduzioni mancanti (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAggiornato a Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint a flat config\nAggiunto supporto release-script",
+        "es": "Reescritura completa con inicio de sesión QR-code\nMejor manejo de errores para interrupciones de red (ECONNRESET, DB cerrado)\nDependencias actualizadas y vulnerabilidades conocidas fijas\nAñadido todas las traducciones faltantes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nActualizado en Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nApoyo a la publicación",
+        "pl": "Całkowite przepisywanie z logowaniem QR-code\nPoprawa obsługi błędów w przypadku przerw w sieci (ECONNRESET, DB zamknięty)\nAktualizacja zależności i ustalone znane słabe punkty\nDodano wszystkie brakujące tłumaczenia (uk, ru, pt, nl, fr, it, es, pl, zh- cn)\nAktualizacja do Node.js >= 20, kontroler js- >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nDodano obsługę release- script",
+        "uk": "Повний перепис з входом QR-коду\nУдосконалено процес обробки помилок для мережевих перерв (ECONNRESET, DB закритих)\nОновлені залежності та виправлені відомі вразливості\nДодано всі відсутні переклади (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОновлено до Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint на плоску конфігурацію\nДодано підтримку сценарію релізу",
+        "zh-cn": "完成 QR 码登录重写\n改进网络中断错误处理(EONNRESET, DB 关闭)\n更新的依赖性和已知的固定脆弱性\n添加所有缺失的译名( uk, ru, pt, nl, fr, it, es, pl, zh- cn)\n更新至Node.js >= 20,js控制器 >= 6.0.11, admin >= 7.6.20\n移动到平面配置\n添加发布脚本支持"
+      },
       "0.2.2": {
         "en": "Minor improvments with device handling",
         "de": "Verbesserung bei der Geräteerkennung",
@@ -150,15 +163,9 @@
       }
     ]
   },
-  "encryptedNative": [
-    "password"
-  ],
-  "protectedNative": [
-    "password"
-  ],
+  "encryptedNative": [],
+  "protectedNative": [],
   "native": {
-    "username": "",
-    "password": "",
     "region": "de",
     "interval": 10
   },
