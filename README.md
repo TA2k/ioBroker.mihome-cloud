@@ -115,29 +115,18 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
+### **WORK IN PROGRESS**
+
 ### 1.0.3 (2026-03-14)
-- Updated `configDes.js` with many new Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)
-- Added environment properties (Temperature, Humidity) to many device configurations
-- Consolidated device definitions for better maintainability
-
-### 1.0.2 (2026-03-14)
-
-- Consolidation of previous refinements into a stable release
-
-### 1.0.1 (2026-03-14)
-
-- Migrated translations to external i18n files
-- Refined German translations and login flow description
-
-### 1.0.0 (2026-03-14)
-
-- Complete rewrite with QR-code login flow
-- Improved error handling for network interruptions (ECONNRESET, DB closed)
-- Updated dependencies and fixed known vulnerabilities
-- Added all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)
-- Updated requirements: Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20
-- Migration to ESLint flat config
-- Added release-script support
+- **Major update with complete rewrite:**
+  - New QR-code based login flow
+  - Support for many new Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)
+  - Added environment properties (Temperature, Humidity) to many device configurations
+  - Improved error handling for network interruptions
+  - Migration to external i18n files and Node.js 20+ requirement
+  - Updated dependencies and fixed known vulnerabilities
+  - Added missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)
+  - Migration to ESLint flat config and release-script support
 
 ### 0.2.2
 
