@@ -117,8 +117,6 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 ## Changelog
 
 ### **WORK IN PROGRESS**
-
-### 1.0.3 (2026-03-14)
 - Updated `configDes.js` with many new Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)
 - Added environment properties (Temperature, Humidity) to many device configurations
 - Consolidated device definitions for better maintainability
