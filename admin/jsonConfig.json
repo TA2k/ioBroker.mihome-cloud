@@ -1,6 +1,5 @@
 {
   "type": "panel",
-  "i18n": false,
   "items": {
     "_authInfo": {
       "type": "staticText",
