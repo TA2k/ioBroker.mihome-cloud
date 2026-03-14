@@ -27,14 +27,14 @@ Adapter for all Mi Home Cloud devices. Connects to the Xiaomi Cloud API and prov
 
 In the adapter settings you can configure:
 
-| Setting | Description |
-| --- | --- |
-| **Region** | Select the Xiaomi Cloud region matching your Mi Home app (Germany, China, Russia, Taiwan, Singapore, USA) |
-| **Update interval** | Polling interval in minutes (minimum 1 minute) |
+| Setting             | Description                                                                                               |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Region**          | Select the Xiaomi Cloud region matching your Mi Home app (Germany, China, Russia, Taiwan, Singapore, USA) |
+| **Update interval** | Polling interval in minutes (minimum 1 minute)                                                            |
 
 ## Login
 
-The adapter uses a **QR-Code / URL-based login** (no username/password needed in the adapter settings).
+The adapter uses a **URL-based login** (no username/password needed in the adapter settings).
 
 1. Configure the **Region** and **Interval** in the adapter settings and save.
 2. Start the adapter.
@@ -115,21 +115,29 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+
+- Updated `configDes.js` with many new Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)
+- Added environment properties (Temperature, Humidity) to many device configurations
+- Consolidated device definitions for better maintainability
+
 ### 1.0.2 (2026-03-14)
+
 - Consolidation of previous refinements into a stable release
-- Verified repository standards with Repochecker
 
 ### 1.0.1 (2026-03-14)
-- Migration to external i18n files for better maintainability
-- Refinement of German translations and login flow description
-- Integration of Repochecker into the development workflow
+
+- Migrated translations to external i18n files
+- Refined German translations and login flow description
 
 ### 1.0.0 (2026-03-14)
-- Complete rewrite with login URL (QR-code login flow)
+
+- Complete rewrite with QR-code login flow
 - Improved error handling for network interruptions (ECONNRESET, DB closed)
 - Updated dependencies and fixed known vulnerabilities
 - Added all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)
-- Updated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20
+- Updated requirements: Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20
 - Migration to ESLint flat config
 - Added release-script support
 
