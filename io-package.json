@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "news": {
+      "1.0.4": {
+        "en": "Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance",
+        "de": "Wartungsupdate: Konsolidierte Changelog- und Fix-Repository-Metadaten für bessere Standards Compliance",
+        "ru": "Обновление технического обслуживания: консолидированный журнал изменений и фиксированные метаданные хранилища для лучшего соответствия стандартам",
+        "pt": "Atualização de manutenção: metadados consolidados do changelog e do repositório fixo para melhor conformidade com padrões",
+        "nl": "Onderhoudsupdate: Geconsolideerde veranderingslog en vaste repository metadata voor betere normen",
+        "fr": "Mise à jour: Mise à jour des métadonnées consolidées de changement et de dépôt fixe pour une meilleure conformité aux normes",
+        "it": "Aggiornamento della manutenzione: metadati di changelog e repository fissi consolidati per una migliore conformità agli standard",
+        "es": "Actualización de mantenimiento: Metadatos de repositorios consolidados y de repositorio fijo para un mejor cumplimiento de normas",
+        "pl": "Aktualizacja utrzymania: Skonsolidowany zmiennokształtny i stałe metadane repozytorium dla lepszej zgodności norm",
+        "uk": "Оновлення технічного обслуговування: Консолідований блок змін і виправлений репозиторій метаданих для кращого дотримання стандартів",
+        "zh-cn": "更新维护:合并变更日志和固定存储器元数据,以更好地遵守标准"
+      },
       "1.0.3": {
         "en": "Major rewrite including:\n- New Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)\n- Environment properties (Temperature, Humidity)\n- QR-code login flow\n- Improved error handling\n- Migration to external i18n files and Node.js 20+",
         "de": "Vollständige Überarbeitung inklusive:\n- Neue Xiaomi-Gerätemodelle (Luftreiniger 4er Serie, neue Ventilatoren/Heizungen, Saugroboter)\n- Umgebungseigenschaften (Temperatur, Luftfeuchtigkeit)\n- QR-Code Login-Verfahren\n- Verbesserte Fehlerbehandlung\n- Migration auf externe i18n-Dateien und Node.js 20+",
