@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "0.2.2",
+    "version": "1.0.0",
     "news": {
       "1.0.0": {
         "en": "Complete rewrite with QR-code login\nImproved error handling for network interruptions (ECONNRESET, DB closed)\nUpdated dependencies and fixed known vulnerabilities\nAdded all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nUpdated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nAdded release-script support",
