@@ -116,6 +116,7 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 
 ## Changelog
 ### **WORK IN PROGRESS**
+- Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance
 
 ### 1.0.3 (2026-03-14)
 - **Major update with complete rewrite:**
