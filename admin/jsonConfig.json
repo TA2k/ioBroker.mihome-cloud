@@ -21,12 +21,20 @@
         "fontWeight": "500"
       },
       "newLine": true,
-      "sm": 12
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
     },
     "region": {
       "type": "select",
       "newLine": true,
-      "sm": 3,
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 4,
+      "xl": 4,
       "options": [
         {
           "label": "Deutschland",
@@ -71,7 +79,11 @@
       "type": "number",
       "newLine": true,
       "min": 1,
-      "sm": 2,
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 4,
+      "xl": 4,
       "label": {
         "en": "Update interval (in minutes)",
         "de": "Aktualisierungsintervall (in Minuten)",

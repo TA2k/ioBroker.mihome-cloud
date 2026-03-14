@@ -18,7 +18,7 @@ const { HttpsCookieAgent } = require("http-cookie-agent/http");
 
 class MihomeCloud extends utils.Adapter {
   /**
-   * @param {Partial<utils.AdapterOptions>} [options={}]
+   * @param {Partial<utils.AdapterOptions>} [options]
    */
   constructor(options) {
     super({
@@ -56,6 +56,7 @@ class MihomeCloud extends utils.Adapter {
     this.requestClient = axios.create({
       withCredentials: true,
       maxRedirects: 5, // Allow some redirects by default
+      timeout: 15000,
       httpsAgent: new HttpsCookieAgent({
         cookies: {
           jar: this.cookieJar,
@@ -83,17 +84,12 @@ class MihomeCloud extends utils.Adapter {
       accept: "*/*",
       "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
       "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
-      "operate-common":
-        "_region=" +
-        this.config.region +
-        "&_language=" +
-        this.local +
-        "_deviceId=" +
-        this.deviceId +
-        "&_appVersion=10.5.201&_platform=1&_platformVersion=14.8",
+      "operate-common": `_region=${this.config.region}&_language=${this.local}_deviceId=${
+        this.deviceId
+      }&_appVersion=10.5.201&_platform=1&_platformVersion=14.8`,
       "user-agent": "APP/com.xiaomi.mihome APPV/10.5.201",
     };
-    this.config.region = this.config.region === "cn" ? "" : this.config.region + ".";
+    this.config.region = this.config.region === "cn" ? "" : `${this.config.region}.`;
     this.updateInterval = null;
     this.refreshTokenTimeout = null;
     this.session = {};
@@ -111,15 +107,13 @@ class MihomeCloud extends utils.Adapter {
       // Valid ssecurity is typically 24-32 characters (Base64 encoded)
       // Check for corruption: too short (<20) or contains invalid characters
       if (this.session && this.session.ssecurity) {
-        this.log.debug("Found ssecurity with length: " + this.session.ssecurity.length + " chars");
+        this.log.debug(`Found ssecurity with length: ${this.session.ssecurity.length} chars`);
 
         // Check if ssecurity is corrupted (too short or contains invalid Base64 characters)
         const isCorrupted = this.session.ssecurity.length < 20 || !/^[A-Za-z0-9+/=]+$/.test(this.session.ssecurity);
 
         if (isCorrupted) {
-          this.log.warn(
-            "Found corrupted session (ssecurity invalid: " + this.session.ssecurity.length + " chars), clearing for fresh login...",
-          );
+          this.log.warn(`Found corrupted session (ssecurity invalid: ${this.session.ssecurity.length} chars), clearing for fresh login...`);
           this.session = {};
           this.cookieJar = new tough.CookieJar(); // Clear all cookies
           await this.saveCookies(); // Clear the saved state
@@ -163,11 +157,8 @@ class MihomeCloud extends utils.Adapter {
     if (this.session.ssecurity) {
       await this.getDeviceList();
       await this.updateDevicesViaSpec();
-      await this.updateDevices();
       await this.updateCustomStates();
       await this.updateVacuumStatus();
-      await this.getHome();
-      await this.getActions();
     }
 
     // ALWAYS set up polling interval, even if initial connection failed
@@ -195,7 +186,6 @@ class MihomeCloud extends utils.Adapter {
         // Only poll if we have a valid session
         if (this.session.ssecurity) {
           await this.updateDevicesViaSpec();
-          await this.updateDevices();
           await this.updateCustomStates();
           await this.updateVacuumStatus();
         }
@@ -207,7 +197,9 @@ class MihomeCloud extends utils.Adapter {
     // No need for periodic re-authentication.
   }
   async login() {
-    // QR-Code Login (matching Python's QrCodeXiaomiCloudConnector)
+    // QR-Code Login: Uses Xiaomi's long-polling QR code flow
+    // Step 1: Get QR code URL, Step 2: Display login URL to user,
+    // Step 3: Long-poll until user logs in, Step 4: Extract service token
     this.log.info("Starting Xiaomi Cloud Login...");
 
     // Clear any old session data to ensure fresh login
@@ -242,8 +234,9 @@ class MihomeCloud extends utils.Adapter {
   }
 
   /**
-   * QR-Code Login Step 1: Get QR code URL
-   * Matches Python's login_step_1()
+   * QR-Code Login Step 1: Request QR code and login URLs from Xiaomi account API
+   *
+   * @returns {Promise<boolean>} true if QR code URLs were obtained successfully
    */
   async qrLoginStep1() {
     this.log.debug("QR Login Step 1");
@@ -260,8 +253,8 @@ class MihomeCloud extends utils.Adapter {
     };
 
     try {
-      this.log.debug("Requesting QR code from: " + url);
-      this.log.debug("Request params: " + JSON.stringify(params));
+      this.log.debug(`Requesting QR code from: ${url}`);
+      this.log.debug(`Request params: ${JSON.stringify(params)}`);
 
       const response = await this.requestClient({
         method: "get",
@@ -273,8 +266,8 @@ class MihomeCloud extends utils.Adapter {
         },
       });
 
-      this.log.debug("QR Login Step 1 response status: " + response.status);
-      this.log.debug("QR Login Step 1 response data: " + JSON.stringify(response.data));
+      this.log.debug(`QR Login Step 1 response status: ${response.status}`);
+      this.log.debug(`QR Login Step 1 response data: ${JSON.stringify(response.data)}`);
 
       if (response.status === 200 && response.data) {
         // Parse response data - remove &&&START&&& prefix if present
@@ -290,34 +283,34 @@ class MihomeCloud extends utils.Adapter {
           this.session.longPollingUrl = data.lp;
           this.session.timeout = data.timeout;
           this.log.debug("QR code URLs extracted successfully");
-          this.log.debug("QR Image URL: " + data.qr);
-          this.log.debug("Login URL: " + data.loginUrl);
-          this.log.debug("Long Polling URL: " + data.lp);
+          this.log.debug(`QR Image URL: ${data.qr}`);
+          this.log.debug(`Login URL: ${data.loginUrl}`);
+          this.log.debug(`Long Polling URL: ${data.lp}`);
           return true;
-        } else {
-          this.log.error("Response data missing 'qr' field: " + JSON.stringify(data));
         }
+        this.log.error(`Response data missing 'qr' field: ${JSON.stringify(data)}`);
       }
     } catch (error) {
-      this.log.error("QR Login Step 1 error: " + error.message);
+      this.log.error(`QR Login Step 1 error: ${error.message}`);
       if (error.response) {
-        this.log.error("Response status: " + error.response.status);
-        this.log.error("Response data: " + JSON.stringify(error.response.data));
+        this.log.error(`Response status: ${error.response.status}`);
+        this.log.error(`Response data: ${JSON.stringify(error.response.data)}`);
       }
-      this.log.debug("Error stack: " + error.stack);
+      this.log.debug(`Error stack: ${error.stack}`);
     }
 
     return false;
   }
 
   /**
-   * QR-Code Login Step 2: Display QR code
-   * Matches Python's login_step_2()
+   * QR-Code Login Step 2: Display login URL to user via adapter log
+   *
+   * @returns {Promise<boolean>} true if login URL was displayed successfully
    */
   async qrLoginStep2() {
     this.log.debug("QR Login Step 2");
     const url = this.session.qrImageUrl;
-    this.log.debug("QR Image URL: " + url);
+    this.log.debug(`QR Image URL: ${url}`);
 
     try {
       const response = await this.requestClient({
@@ -340,38 +333,40 @@ class MihomeCloud extends utils.Adapter {
         return true;
       }
     } catch (error) {
-      this.log.error("QR Login Step 2 error: " + error.message);
+      this.log.error(`QR Login Step 2 error: ${error.message}`);
     }
 
     return false;
   }
 
   /**
-   * QR-Code Login Step 3: Long-polling for QR code scan
-   * Matches Python's login_step_3()
+   * QR-Code Login Step 3: Long-poll Xiaomi servers until user completes browser login
+   * Blocks until login succeeds or QR code timeout expires
+   *
+   * @returns {Promise<boolean>} true if user authenticated successfully
    */
   async qrLoginStep3() {
     this.log.debug("QR Login Step 3");
     const url = this.session.longPollingUrl;
-    this.log.debug("Long polling URL: " + url);
+    this.log.debug(`Long polling URL: ${url}`);
 
     const startTime = Date.now();
     // timeout from API is in seconds, convert to milliseconds
     const timeoutMs = (this.session.timeout || this.QR_CODE_TIMEOUT) * 1000;
-    this.log.info("Login valid for " + timeoutMs / 1000 + " seconds");
+    this.log.info(`Login valid for ${timeoutMs / 1000} seconds`);
 
     // Start long polling
-    // eslint-disable-next-line no-constant-condition
+
     while (true) {
       // Check if overall timeout exceeded BEFORE making request
       const elapsed = Date.now() - startTime;
       if (elapsed > timeoutMs) {
-        this.log.error("QR code login timeout after " + elapsed / 1000 + " seconds");
+        this.log.error(`QR code login timeout after ${elapsed / 1000} seconds`);
         return false;
       }
 
       try {
-        this.log.debug("Long polling attempt (elapsed: " + Math.round(elapsed / 1000) + "s / " + Math.round(timeoutMs / 1000) + "s)...");
+        this.log.debug(`Long polling attempt (elapsed: ${Math.round(elapsed / 1000)}s / ${Math.round(timeoutMs / 1000)}s)...`);
 
         const response = await this.requestClient({
           method: "get",
@@ -379,7 +374,7 @@ class MihomeCloud extends utils.Adapter {
           timeout: this.LONG_POLL_TIMEOUT,
         });
 
-        this.log.debug("Long polling response status: " + response.status);
+        this.log.debug(`Long polling response status: ${response.status}`);
 
         if (response.status === 200) {
           // Parse response data - remove &&&START&&& prefix if present
@@ -388,7 +383,7 @@ class MihomeCloud extends utils.Adapter {
             const jsonString = data.replace("&&&START&&&", "");
             data = JSON.parse(jsonString);
             this.log.debug("Parsed JSON after removing &&&START&&& prefix from long-polling response");
-            this.log.debug("Full parsed data: " + JSON.stringify(data));
+            this.log.debug(`Full parsed data: ${JSON.stringify(data)}`);
           }
 
           // Check if data contains the required fields
@@ -402,21 +397,18 @@ class MihomeCloud extends utils.Adapter {
             this.session.passToken = data.passToken;
             this.session.location = data.location;
 
-            this.log.debug("User ID: " + this.session.userId);
-            this.log.debug(
-              "Ssecurity (length " + (this.session.ssecurity ? this.session.ssecurity.length : 0) + "): " + this.session.ssecurity,
-            );
-            this.log.debug("Location: " + this.session.location);
+            this.log.debug(`User ID: ${this.session.userId}`);
+            this.log.debug(`Ssecurity (length ${this.session.ssecurity ? this.session.ssecurity.length : 0}): ${this.session.ssecurity}`);
+            this.log.debug(`Location: ${this.session.location}`);
 
             return true;
-          } else {
-            // Response received but incomplete - continue polling
-            this.log.debug("Received 200 but data incomplete, continuing to wait...");
-            this.log.debug("Response data: " + JSON.stringify(data));
           }
+          // Response received but incomplete - continue polling
+          this.log.debug("Received 200 but data incomplete, continuing to wait...");
+          this.log.debug(`Response data: ${JSON.stringify(data)}`);
         } else {
           // Non-200 status, continue polling
-          this.log.debug("Received status " + response.status + ", continuing to wait for scan...");
+          this.log.debug(`Received status ${response.status}, continuing to wait for scan...`);
         }
       } catch (error) {
         // Timeout is expected - continue polling
@@ -425,11 +417,11 @@ class MihomeCloud extends utils.Adapter {
           continue;
         } else if (error.response) {
           // Server returned an error response
-          this.log.debug("Long polling response error: " + error.response.status + " - continuing...");
+          this.log.debug(`Long polling response error: ${error.response.status} - continuing...`);
           continue;
         } else {
-          this.log.error("Long polling error: " + error.message);
-          this.log.debug("Error details: " + JSON.stringify(error));
+          this.log.error(`Long polling error: ${error.message}`);
+          this.log.debug(`Error details: ${JSON.stringify(error)}`);
           // Don't fail immediately on network errors, keep trying
           await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
           continue;
@@ -439,8 +431,10 @@ class MihomeCloud extends utils.Adapter {
   }
 
   /**
-   * QR-Code Login Step 4: Get service token
-   * Matches Python's login_step_4()
+   * QR-Code Login Step 4: Follow redirect URL to obtain serviceToken cookie
+   * Sets cookies on all relevant Xiaomi API domains and saves session
+   *
+   * @returns {Promise<boolean>} true if service token was obtained successfully
    */
   async qrLoginStep4() {
     this.log.debug("QR Login Step 4");
@@ -497,7 +491,7 @@ class MihomeCloud extends utils.Adapter {
 
         this.session.serviceToken = serviceToken;
         this.log.info("Service token obtained successfully");
-        this.log.debug("Service token: " + serviceToken);
+        this.log.debug(`Service token: ${serviceToken}`);
 
         // Install service token cookies on multiple domains (matching Python)
         const apiDomains = [
@@ -530,7 +524,7 @@ class MihomeCloud extends utils.Adapter {
         return true;
       }
     } catch (error) {
-      this.log.error("QR Login Step 4 error: " + error.message);
+      this.log.error(`QR Login Step 4 error: ${error.message}`);
     }
 
     return false;
@@ -548,7 +542,7 @@ class MihomeCloud extends utils.Adapter {
 
     await axios({
       method: "post",
-      url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+      url: `https://${this.config.region}api.io.mi.com/app${path}`,
       headers: headers,
       params: {
         data: data_rc,
@@ -593,7 +587,7 @@ class MihomeCloud extends utils.Adapter {
               native: {},
             });
 
-            this.json2iob.parse(id + ".general", device, { forceIndex: true });
+            this.json2iob.parse(`${id}.general`, device, { forceIndex: true });
           }
           await this.fetchScenes();
           await this.fetchSpecs();
@@ -614,7 +608,7 @@ class MihomeCloud extends utils.Adapter {
             }
             const remoteArray = this.remoteCommands[device.model] || [];
             for (const remote of remoteArray) {
-              await this.setObjectNotExistsAsync(device.did + ".remotePlugins", {
+              await this.setObjectNotExistsAsync(`${device.did}.remotePlugins`, {
                 type: "channel",
                 common: {
                   name: "Remote Controls extracted from Plugin definition",
@@ -622,7 +616,7 @@ class MihomeCloud extends utils.Adapter {
                 },
                 native: {},
               });
-              this.setObjectNotExists(device.did + ".remotePlugins.customCommand", {
+              this.setObjectNotExists(`${device.did}.remotePlugins.customCommand`, {
                 type: "state",
                 common: {
                   name: "Send Custom command via Plugin",
@@ -645,10 +639,10 @@ class MihomeCloud extends utils.Adapter {
                 name = name.replace(/\./g, "_");
               }
               try {
-                this.setObjectNotExists(device.did + ".remotePlugins." + name, {
+                this.setObjectNotExists(`${device.did}.remotePlugins.${name}`, {
                   type: "state",
                   common: {
-                    name: name + " " + (params || ""),
+                    name: `${name} ${params || ""}`,
                     type: "mixed",
                     role: "state",
                     def: false,
@@ -673,7 +667,6 @@ class MihomeCloud extends utils.Adapter {
   async fetchPlugins() {
     this.log.info("Fetching Plugins");
     const path = "/v2/plugin/fetch_plugin";
-    // const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
     const models = [];
     for (const device of this.deviceArray) {
       models.push({ model: device.model });
@@ -755,8 +748,11 @@ class MihomeCloud extends utils.Adapter {
                 }
               }
             } catch (error) {
-              this.log.error(error);
-              this.log.error(error.stack);
+              if (error.message && error.message.includes("zip format")) {
+                this.log.info(`Could not extract plugin zip for ${plugin.model} - invalid format`);
+              } else {
+                this.log.debug(`Failed to extract plugin for ${plugin.model}: ${error.message}`);
+              }
               return;
             }
           })
@@ -786,7 +782,7 @@ class MihomeCloud extends utils.Adapter {
         const scene = resultData.result[sceneKey];
         this.log.info(`Found scene ${scene.name} with id ${scene.us_id}`);
         this.scenes[scene.us_id] = scene;
-        this.setObjectNotExists("scenes." + scene.us_id, {
+        this.setObjectNotExists(`scenes.${scene.us_id}`, {
           type: "state",
           common: {
             name: scene.name,
@@ -805,13 +801,10 @@ class MihomeCloud extends utils.Adapter {
   }
   async fetchSpecs() {
     this.log.info("Fetching Specs");
-    // const models = [{ model: "deerma.humidifier.jsq" }, { model: "yeelink.light.bslamp1" }];
     const specs = [];
     for (const device of this.deviceArray) {
-      // device.spec_type = "urn:miot-spec-v2:device:light:0000A001:yeelink-bslamp1:1";
       specs.push(device.spec_type);
     }
-    // specs = ["urn:miot-spec-v2:device:humidifier:0000A00E:deerma-jsq:1", "urn:miot-spec-v2:device:light:0000A001:yeelink-bslamp1:1"];
 
     await this.requestClient({
       method: "post",
@@ -837,7 +830,7 @@ class MihomeCloud extends utils.Adapter {
       this.log.info(`Processing ${config.props.length} custom properties from configDes for ${device.model}`);
 
       // Create custom channel for configDes states
-      await this.setObjectNotExistsAsync(device.did + ".custom", {
+      await this.setObjectNotExistsAsync(`${device.did}.custom`, {
         type: "channel",
         common: {
           name: "Custom Controls",
@@ -907,7 +900,7 @@ class MihomeCloud extends utils.Adapter {
 
         this.log.debug(`Creating state ${propKey} with method ${method}`);
 
-        await this.extendObjectAsync(device.did + ".custom." + propKey, {
+        await this.extendObjectAsync(`${device.did}.custom.${propKey}`, {
           type: "state",
           common: {
             name: name,
@@ -944,7 +937,7 @@ class MihomeCloud extends utils.Adapter {
   async extractRemotesFromSpec(device) {
     const spec = this.specs[device.spec_type];
     this.log.info(`Extracting status and remotes from spec for ${device.model} ${spec.description}`);
-    this.log.info("You can get detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=" + device.model);
+    this.log.info(`You can get detailed information about status and remotes here: http://www.merdok.org/miotspec/?model=${device.model}`);
     let siid = 0;
     this.specStatusDict[device.did] = [];
 
@@ -965,7 +958,9 @@ class MihomeCloud extends utils.Adapter {
     for (const service of spec.services) {
       const typeArray = service.type.split(":");
       const serviceTypeName = typeArray[3];
-      if (serviceTypeName === "device-information") continue;
+      if (serviceTypeName === "device-information") {
+        continue;
+      }
 
       if (service.properties) {
         for (const property of service.properties) {
@@ -984,7 +979,7 @@ class MihomeCloud extends utils.Adapter {
 
     // Create folders based on what exists
     if (hasReadOnlyProps) {
-      await this.setObjectNotExistsAsync(device.did + ".status", {
+      await this.setObjectNotExistsAsync(`${device.did}.status`, {
         type: "channel",
         common: {
           name: "Status",
@@ -995,7 +990,7 @@ class MihomeCloud extends utils.Adapter {
     }
 
     if (hasWritableProps) {
-      await this.setObjectNotExistsAsync(device.did + ".remote", {
+      await this.setObjectNotExistsAsync(`${device.did}.remote`, {
         type: "channel",
         common: {
           name: "Remote Controls",
@@ -1072,11 +1067,11 @@ class MihomeCloud extends utils.Adapter {
               }
             }
 
-            const propertyPath = property_data.folder + "." + uniqueName;
-            await this.extendObjectAsync(device.did + "." + propertyPath, {
+            const propertyPath = `${property_data.folder}.${uniqueName}`;
+            await this.extendObjectAsync(`${device.did}.${propertyPath}`, {
               type: "state",
               common: {
-                name: property_data.service.description + " - " + property_data.property.description,
+                name: `${property_data.service.description} - ${property_data.property.description}`,
                 type: type,
                 role: role,
                 unit: unit,
@@ -1091,7 +1086,7 @@ class MihomeCloud extends utils.Adapter {
                 piid: property_data.piid,
                 did: device.did,
                 model: device.model,
-                name: property_data.service.description + " " + property_data.property.description,
+                name: `${property_data.service.description} ${property_data.property.description}`,
                 type: property_data.property.type,
                 access: property_data.property.access,
               },
@@ -1108,7 +1103,7 @@ class MihomeCloud extends utils.Adapter {
               });
             }
 
-            this.specPropsToIdDict[device.did][property_data.siid + "-" + property_data.piid] = device.did + "." + propertyPath;
+            this.specPropsToIdDict[device.did][`${property_data.siid}-${property_data.piid}`] = `${device.did}.${propertyPath}`;
           }
         }
 
@@ -1126,7 +1121,7 @@ class MihomeCloud extends utils.Adapter {
               aiid: aiid,
               did: device.did,
               model: device.model,
-              name: service.description + " " + action.description,
+              name: `${service.description} ${action.description}`,
               type: action.type,
               access: action.access,
             };
@@ -1180,11 +1175,11 @@ class MihomeCloud extends utils.Adapter {
             }
 
             // All actions go into global remote/ folder
-            const actionPath = "remote." + uniqueName;
-            this.setObjectNotExists(device.did + "." + actionPath, {
+            const actionPath = `remote.${uniqueName}`;
+            this.setObjectNotExists(`${device.did}.${actionPath}`, {
               type: "state",
               common: {
-                name: service.description + " - " + action.description,
+                name: `${service.description} - ${action.description}`,
                 type: type,
                 role: role,
                 unit: unit,
@@ -1202,16 +1197,16 @@ class MihomeCloud extends utils.Adapter {
                 model: device.model,
                 in: action.in || [],
                 out: action.out || [],
-                name: service.description + " " + action.description,
+                name: `${service.description} ${action.description}`,
                 type: action.type,
                 access: action.access,
               },
             });
-            this.specActionsToIdDict[device.did][service.iid + "-" + action.iid] = device.did + "." + actionPath;
+            this.specActionsToIdDict[device.did][`${service.iid}-${action.iid}`] = `${device.did}.${actionPath}`;
           }
         }
 
-        // Process Events -> all go to global events/ folder
+        // Process Events -> stored under status/ as boolean indicators
         if (service.events && service.events.length > 0) {
           for (const event of service.events) {
             const typeName = event.type.split(":")[3].replace(/\./g, "_");
@@ -1226,12 +1221,12 @@ class MihomeCloud extends utils.Adapter {
               this.log.debug(`Adding prefix to '${typeName}' from ${service.description} due to conflict`);
             }
 
-            const eventPath = "status." + uniqueName;
+            const eventPath = `status.${uniqueName}`;
 
-            await this.setObjectNotExistsAsync(device.did + "." + eventPath, {
+            await this.setObjectNotExistsAsync(`${device.did}.${eventPath}`, {
               type: "state",
               common: {
-                name: service.description + " - " + event.description,
+                name: `${service.description} - ${event.description}`,
                 type: "boolean",
                 role: "indicator",
                 write: false,
@@ -1242,18 +1237,18 @@ class MihomeCloud extends utils.Adapter {
                 eiid: event.iid,
                 did: device.did,
                 model: device.model,
-                name: service.description + " " + event.description,
+                name: `${service.description} ${event.description}`,
                 type: event.type,
                 arguments: event.arguments || [],
               },
             });
 
             // Store event path for updates
-            this.specEventsToIdDict[device.did][service.iid + "-" + event.iid] = device.did + "." + eventPath;
+            this.specEventsToIdDict[device.did][`${service.iid}-${event.iid}`] = `${device.did}.${eventPath}`;
           }
         }
       } catch (error) {
-        this.log.error("Error while extracting spec for " + device.model);
+        this.log.error(`Error while extracting spec for ${device.model}`);
         this.log.error(error);
         this.log.error(error.stack);
         this.log.info(JSON.stringify(service));
@@ -1267,7 +1262,7 @@ class MihomeCloud extends utils.Adapter {
 
     return await this.requestClient({
       method: "post",
-      url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+      url: `https://${this.config.region}api.io.mi.com/app${path}`,
       headers: {
         ...this.header,
         Cookie: cookieHeader,
@@ -1298,89 +1293,6 @@ class MihomeCloud extends utils.Adapter {
       });
   }
 
-  async getHome() {
-    const path = "/homeroom/gethome";
-    const data = { fetch_share: true, accessKey: "IOS00026747c5acafc2", app_ver: 7, limit: 300 };
-    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
-    const cookieHeader = await this.buildCookieHeader();
-
-    await this.requestClient({
-      method: "post",
-      url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: {
-        ...this.header,
-        Cookie: cookieHeader,
-      },
-      params: {
-        _nonce: nonce,
-        data: data_rc,
-        rc4_hash__: rc4_hash_rc,
-        signature: signature,
-        ssecurity: this.session.ssecurity,
-      },
-      data: "",
-    })
-      .then(async (res) => {
-        try {
-          const result = rc4.decode(res.data).replace("&&&START&&&", "");
-          this.log.debug(result);
-          this.home = JSON.parse(result).result;
-        } catch (error) {
-          this.log.error(error);
-          return;
-        }
-      })
-      .catch((error) => {
-        this.log.error(error);
-        error.response && this.log.error(JSON.stringify(error.response.data));
-      });
-  }
-
-  async getActions() {
-    if (!this.home || this.home.homelist.length === 0) {
-      this.log.info("No home found, skipping getActions");
-      return;
-    }
-    const path = "/scene/tplv2";
-    const data = {
-      home_id: parseInt(this.home.homelist[0].id),
-      accessKey: "IOS00026747c5acafc2",
-      owner_uid: this.session.userId,
-      limit: 300,
-    };
-    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
-    const headers = await this.buildApiHeaders();
-
-    await this.requestClient({
-      method: "post",
-      url: "https://" + this.config.region + "api.io.mi.com/app" + path,
-      headers: headers,
-      params: {
-        _nonce: nonce,
-        data: data_rc,
-        rc4_hash__: rc4_hash_rc,
-        signature: signature,
-        ssecurity: this.session.ssecurity,
-      },
-      data: "",
-    })
-      .then(async (res) => {
-        try {
-          const result = JSON.parse(rc4.decode(res.data)).result;
-          // Actions data available in result.tpl but not currently used
-          // Each device has: model, name, value.action_list with sa_id, payload.command, etc.
-          this.log.debug(`Fetched ${result.tpl.length} action templates from Xiaomi Cloud`);
-        } catch (error) {
-          this.log.error(error);
-          return;
-        }
-      })
-      .catch((error) => {
-        this.log.error(error);
-        error.response && this.log.error(JSON.stringify(error.response.data));
-      });
-  }
-
   async buildApiHeaders() {
     // Build headers matching Python's execute_api_call_encrypted
     const cookieHeader = await this.buildCookieHeader();
@@ -1399,7 +1311,7 @@ class MihomeCloud extends utils.Adapter {
     // We need to manually build the cookie header from ALL cookies in the jar
     // plus the explicit ones that Python sets
 
-    const targetDomain = "https://" + this.config.region + "api.io.mi.com";
+    const targetDomain = `https://${this.config.region}api.io.mi.com`;
     const allCookies = await this.cookieJar.getCookies(targetDomain);
 
     // Start with cookies from jar
@@ -1424,8 +1336,8 @@ class MihomeCloud extends utils.Adapter {
 
     if (!cookieMap["serviceToken"]) {
       this.log.error("buildCookieHeader: serviceToken is missing!");
-      this.log.error("Session keys: " + Object.keys(this.session).join(", "));
-      this.log.error("Available cookies: " + Object.keys(cookieMap).join(", "));
+      this.log.error(`Session keys: ${Object.keys(this.session).join(", ")}`);
+      this.log.error(`Available cookies: ${Object.keys(cookieMap).join(", ")}`);
     }
 
     // Build cookie header string
@@ -1437,7 +1349,7 @@ class MihomeCloud extends utils.Adapter {
   createBody(path, data) {
     if (!this.session.ssecurity) {
       this.log.error("Cannot create request body: ssecurity is missing from session!");
-      this.log.error("Session keys: " + Object.keys(this.session).join(", "));
+      this.log.error(`Session keys: ${Object.keys(this.session).join(", ")}`);
       throw new Error("ssecurity is required but not found in session");
     }
 
@@ -1506,120 +1418,7 @@ class MihomeCloud extends utils.Adapter {
 
     return ["string", "text"];
   }
-  async updateDevices() {
-    // Universal status sources that work for all devices:
-    // 1. Miot Spec (status/ + remote/) - handled in getStatus
-    // 2. configDes.js (custom/) - handled in getCustomProperties
-    // 3. Plugin commands (remotePlugins/) - handled in createStates
-    // 4. Events (events/) - handled below
 
-    for (const device of this.deviceArray) {
-      const deviceStatusArray = [];
-
-      // Note: HTTP Event Subscription (/mipush/eventsub) removed - not supported by Xiaomi API
-      // Events require MQTT subscription (not yet implemented)
-      // For now, devices only support status polling via spec properties
-
-      for (const element of deviceStatusArray) {
-        const data = JSON.parse(JSON.stringify(element.props).replace("$DID", device.did));
-        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(element.url, data);
-        const cookieHeader = await this.buildCookieHeader();
-        await this.requestClient({
-          method: "post",
-          url: "https://" + this.config.region + "api.io.mi.com/app" + element.url,
-          headers: {
-            ...this.header,
-            Cookie: cookieHeader,
-          },
-          params: {
-            _nonce: nonce,
-            data: data_rc,
-            rc4_hash__: rc4_hash_rc,
-            signature: signature,
-            ssecurity: this.session.ssecurity,
-          },
-          data: "",
-        })
-          .then(async (res) => {
-            try {
-              res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
-            } catch (error) {
-              this.log.error(error);
-              return;
-            }
-            if (res.data.code !== 0) {
-              if (res.data.code === -8 || res.data.code === -2) {
-                // Mark device as unsupported for plugin status
-                if (element.path === "pluginStatus" && res.data.code === -8) {
-                  this.unsupportedPluginStatus[device.did] = true;
-                  this.log.debug(`Device ${device.name} (${device.did}) does not support plugin status. Will not retry.`);
-                } else {
-                  this.log.debug(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
-                  this.log.debug(JSON.stringify(res.data));
-                }
-                return;
-              }
-              this.log.warn(`Error getting ${element.desc} for ${device.name} (${device.did}) with ${JSON.stringify(element.props)}`);
-              this.log.warn(JSON.stringify(res.data));
-              return;
-            }
-
-            this.log.debug(JSON.stringify(res.data));
-
-            // Handle plugin status response
-            if (element.path === "pluginStatus") {
-              if (res.data.result && Array.isArray(res.data.result)) {
-                for (const evt of res.data.result) {
-                  if (evt.siid && evt.eiid) {
-                    const eventPath = this.specEventsToIdDict[device.did][evt.siid + "-" + evt.eiid];
-                    if (eventPath) {
-                      this.log.info(`Event triggered: ${eventPath}`);
-                      // Set event to true, then auto-reset after 5 seconds
-                      await this.setStateAsync(eventPath, true, true);
-                      setTimeout(() => {
-                        this.setState(eventPath, false, true);
-                      }, this.EVENT_AUTO_RESET_DELAY);
-                    }
-                  }
-                }
-              }
-              return;
-            }
-
-            const resultData = this.parseResponse(res, element.url, device.did);
-            this.log.debug(JSON.stringify(resultData));
-            if (!resultData) {
-              return;
-            }
-
-            this.json2iob.parse(device.did + "." + element.path, resultData, {
-              forceIndex: true,
-              write: true,
-              channelName: element.desc,
-            });
-          })
-          .catch((error) => {
-            if (error.response) {
-              if (error.response.status === 401) {
-                error.response && this.log.debug(JSON.stringify(error.response.data));
-                this.log.warn(element.path + " receive 401 error - session may be invalid");
-                this.setState("info.connection", false, true);
-                return;
-              }
-            }
-            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
-              this.log.debug(error);
-              return;
-            }
-
-            this.log.error(element.url);
-            this.log.error(error);
-            error.stack && this.log.error(error.stack);
-            error.response && this.log.error(JSON.stringify(error.response.data));
-          });
-      }
-    }
-  }
   async updateCustomStates() {
     if (!this.customPropsDict) {
       return;
@@ -1667,7 +1466,7 @@ class MihomeCloud extends utils.Adapter {
 
         this.log.debug(`Chunk ${chunkIndex + 1}/${chunks.length}: ${propKeys.length} properties, JSON length: ${jsonLength} chars`);
 
-        const url = "/home/rpc/" + device.did;
+        const url = `/home/rpc/${device.did}`;
         const data = {
           id: 0,
           method: "get_prop",
@@ -1680,7 +1479,7 @@ class MihomeCloud extends utils.Adapter {
 
         await this.requestClient({
           method: "post",
-          url: "https://" + this.config.region + "api.io.mi.com/app" + url,
+          url: `https://${this.config.region}api.io.mi.com/app${url}`,
           headers: {
             ...this.header,
             Cookie: cookieHeader,
@@ -1703,8 +1502,11 @@ class MihomeCloud extends utils.Adapter {
             }
 
             if (res.data.code !== 0) {
-              if (res.data.code === -8 || res.data.code === -2 || res.data.code === -3) {
+              if (res.data.code === -8 || res.data.code === -2 || res.data.code === -3 || res.data.code === -106) {
                 // Code -8: Device doesn't support get_prop - mark it to prevent future attempts
+                // Code -2: Device offline
+                // Code -3: Device timeout
+                // Code -106: Device network unreachable (e.g., disconnected or powered off)
                 if (res.data.code === -8) {
                   this.customPropsDict[device.did] = []; // Clear custom properties list
                   this.log.debug(`Device ${device.name} (${device.did}) does not support get_prop for custom properties. Will not retry.`);
@@ -1738,7 +1540,7 @@ class MihomeCloud extends utils.Adapter {
               for (let i = 0; i < res.data.result.length && i < chunk.length; i++) {
                 const propInfo = chunk[i];
                 let value = res.data.result[i];
-                const statePath = device.did + ".custom." + propInfo.stateName;
+                const statePath = `${device.did}.custom.${propInfo.stateName}`;
 
                 // Convert string values to appropriate types for ioBroker states (only if not null)
                 if (value !== null && value !== undefined) {
@@ -1766,8 +1568,11 @@ class MihomeCloud extends utils.Adapter {
                 return;
               }
             }
-            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
+            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
               this.log.debug(error);
+              return;
+            }
+            if (error.message === "DB closed") {
               return;
             }
             this.log.error(`Error polling custom properties for ${device.name}: ${error.message}`);
@@ -1790,7 +1595,7 @@ class MihomeCloud extends utils.Adapter {
 
       this.log.debug(`Polling vacuum status for ${device.name} (${device.did})`);
 
-      const url = "/home/rpc/" + device.did;
+      const url = `/home/rpc/${device.did}`;
       const data = {
         id: 0,
         method: "get_status",
@@ -1803,7 +1608,7 @@ class MihomeCloud extends utils.Adapter {
 
       await this.requestClient({
         method: "post",
-        url: "https://" + this.config.region + "api.io.mi.com/app" + url,
+        url: `https://${this.config.region}api.io.mi.com/app${url}`,
         headers: {
           ...this.header,
           Cookie: cookieHeader,
@@ -1826,7 +1631,9 @@ class MihomeCloud extends utils.Adapter {
           }
 
           if (res.data.code !== 0) {
-            if (res.data.code === -8 || res.data.code === -2 || res.data.code === -3) {
+            if (res.data.code === -8 || res.data.code === -2 || res.data.code === -3 || res.data.code === -106) {
+              // Code -2: Device offline / Code -3: Device timeout
+              // Code -106: Device network unreachable (e.g., disconnected or powered off)
               this.log.debug(`Error getting vacuum status for ${device.name} (${device.did}): ${res.data.message || "unknown error"}`);
               this.log.debug(JSON.stringify(res.data));
               return;
@@ -1863,7 +1670,7 @@ class MihomeCloud extends utils.Adapter {
                 continue;
               }
 
-              const statePath = device.did + ".custom." + field;
+              const statePath = `${device.did}.custom.${field}`;
 
               // Try to get metadata from configDes
               const propDef = config?.props?.find((p) => p.prop_key === `prop.${field}`);
@@ -1938,8 +1745,11 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
           }
-          if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT") {
+          if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
             this.log.debug(error);
+            return;
+          }
+          if (error.message === "DB closed") {
             return;
           }
           this.log.error(`Error polling vacuum status for ${device.name}: ${error.message}`);
@@ -1961,7 +1771,7 @@ class MihomeCloud extends utils.Adapter {
         const cookieHeader = await this.buildCookieHeader();
         await this.requestClient({
           method: "post",
-          url: "https://" + this.config.region + "api.io.mi.com/app" + url,
+          url: `https://${this.config.region}api.io.mi.com/app${url}`,
           headers: {
             ...this.header,
             Cookie: cookieHeader,
@@ -1979,7 +1789,7 @@ class MihomeCloud extends utils.Adapter {
             try {
               res.data = JSON.parse(rc4.decode(res.data).replace("&&&START&&&", ""));
             } catch (error) {
-              this.log.error(error);
+              this.log.debug(`Error parsing spec response for ${device.name}: ${error.message}`);
               return;
             }
             if (res.data.code !== 0) {
@@ -1994,7 +1804,7 @@ class MihomeCloud extends utils.Adapter {
             }
             this.log.debug(JSON.stringify(res.data));
             for (const element of res.data.result) {
-              const path = this.specPropsToIdDict[device.did][element.siid + "-" + element.piid];
+              const path = this.specPropsToIdDict[device.did][`${element.siid}-${element.piid}`];
               if (path) {
                 if (element.code !== undefined && element.code !== 0) {
                   // Only log non -704220043 errors (device doesn't support property)
@@ -2016,7 +1826,7 @@ class MihomeCloud extends utils.Adapter {
             if (error.response) {
               if (error.response.status === 401) {
                 error.response && this.log.debug(JSON.stringify(error.response.data));
-                this.log.info(url + " receive 401 error. Refresh Token in 60 seconds");
+                this.log.info(`${url} receive 401 error. Refresh Token in 60 seconds`);
                 this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
                 this.refreshTokenTimeout = setTimeout(() => {
                   this.refreshToken();
@@ -2040,39 +1850,6 @@ class MihomeCloud extends utils.Adapter {
     }
   }
 
-  parseResponse(res, url, did) {
-    if (Array.isArray(res.data.result)) {
-      // For plugin responses like: {"result": [0, {prop1: val1, prop2: val2, ...}]}
-      // Return the properties object directly (result[1]), not wrapped in {status: ...}
-      return res.data.result[1] || res.data.result[0];
-    }
-    if (!res.data.result) {
-      try {
-        return JSON.parse(res.data);
-      } catch (error) {
-        return res.data;
-      }
-    }
-    let resultData = res.data.result[did];
-    if (!resultData) {
-      this.log.debug(`No data for ${did} `);
-      return;
-    }
-    if (url === "/v2/device/batchgetdatas") {
-      resultData = res.data.result[did]["event.status"];
-      if (!resultData) {
-        this.log.debug(`No data for ${did} `);
-        return;
-      }
-      resultData = JSON.parse(resultData.value)[0];
-    }
-    if (res.data.result.out) {
-      const base64String = res.data.result.out[0];
-      resultData = JSON.parse(Buffer.from(base64String, "base64").toString("utf8"));
-      resultData = resultData.result[0];
-    }
-    return resultData;
-  }
   async refreshToken() {
     // Note: With manual QR-code authentication, automatic token refresh is not possible.
     // The session remains valid indefinitely until server-side invalidation.
@@ -2106,10 +1883,11 @@ class MihomeCloud extends utils.Adapter {
 
   /**
    * Generic API request helper with RC4 encryption
+   *
    * @param {string} path - API endpoint path
-   * @param {Object} data - Request data to encrypt
+   * @param {object} data - Request data to encrypt
    * @param {string} errorContext - Context for error logging
-   * @returns {Promise<Object>} Decrypted response data
+   * @returns {Promise<object>} Decrypted response data
    */
   async makeApiRequest(path, data, errorContext = "API request") {
     const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(path, data);
@@ -2118,7 +1896,7 @@ class MihomeCloud extends utils.Adapter {
     try {
       const res = await this.requestClient({
         method: "post",
-        url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+        url: `https://${this.config.region}api.io.mi.com/app${path}`,
         headers: {
           ...this.header,
           Cookie: cookieHeader,
@@ -2168,7 +1946,7 @@ class MihomeCloud extends utils.Adapter {
 
         const response = await this.requestClient({
           method: "post",
-          url: "https://" + this.config.region + "api.io.mi.com/app" + path,
+          url: `https://${this.config.region}api.io.mi.com/app${path}`,
           headers: headers,
           params: {
             _nonce: nonce,
@@ -2186,10 +1964,9 @@ class MihomeCloud extends utils.Adapter {
           this.log.info("Existing session is still valid - resuming without re-login");
           this.setState("info.connection", true, true);
           return true;
-        } else {
-          this.log.info("Session test failed with code: " + result.code + " - fresh login required");
-          return false;
         }
+        this.log.info(`Session test failed with code: ${result.code} - fresh login required`);
+        return false;
       } catch (error) {
         if (error.response && error.response.status === 401) {
           this.log.info("Session expired (401 error) - fresh login required");
@@ -2207,15 +1984,11 @@ class MihomeCloud extends utils.Adapter {
         ) {
           // Network connectivity issues - keep session and try again later
           this.log.warn(
-            "Network connectivity issue during session validation (" +
-              error.code +
-              ": " +
-              error.message +
-              ") - keeping session and will retry",
+            `Network connectivity issue during session validation (${error.code}: ${error.message}) - keeping session and will retry`,
           );
           return false; // Session validation failed due to network, but don't clear credentials
         } else {
-          this.log.debug("Session test failed: " + error.message);
+          this.log.debug(`Session test failed: ${error.message}`);
           // For unknown errors, clear session to prevent issues
           this.session = {};
           this.cookieJar = new tough.CookieJar();
@@ -2223,7 +1996,7 @@ class MihomeCloud extends utils.Adapter {
         return false;
       }
     } catch (error) {
-      this.log.warn("Error during session resumption: " + error.message);
+      this.log.warn(`Error during session resumption: ${error.message}`);
       return false;
     }
   }
@@ -2257,9 +2030,9 @@ class MihomeCloud extends utils.Adapter {
             try {
               await this.delObjectAsync(id, { recursive: true });
               deletedCount++;
-              this.log.debug("Deleted object: " + id);
+              this.log.debug(`Deleted object: ${id}`);
             } catch (err) {
-              this.log.debug("Could not delete " + id + ": " + err.message);
+              this.log.debug(`Could not delete ${id}: ${err.message}`);
             }
           }
         }
@@ -2269,9 +2042,9 @@ class MihomeCloud extends utils.Adapter {
       this.deviceArray = [];
       this.deviceDicts = {};
 
-      this.log.info("Deleted " + deletedCount + " device objects");
+      this.log.info(`Deleted ${deletedCount} device objects`);
     } catch (error) {
-      this.log.error("Error deleting devices: " + error.message);
+      this.log.error(`Error deleting devices: ${error.message}`);
     }
   }
 
@@ -2315,7 +2088,7 @@ class MihomeCloud extends utils.Adapter {
       await this.setStateAsync(this.cookieStateId, JSON.stringify(cookieData), true);
       this.log.debug("Cookies and session saved successfully to state");
     } catch (error) {
-      this.log.warn("Failed to save cookies: " + error.message);
+      this.log.warn(`Failed to save cookies: ${error.message}`);
     }
   }
 
@@ -2340,8 +2113,8 @@ class MihomeCloud extends utils.Adapter {
       if (accountChanged) {
         // Account changed: Delete devices AND invalidate session (need fresh login)
         this.log.warn("Account changed!");
-        this.log.warn("  Old userId: " + cookieData.userId);
-        this.log.warn("  New userId: " + this.session.userId);
+        this.log.warn(`  Old userId: ${cookieData.userId}`);
+        this.log.warn(`  New userId: ${this.session.userId}`);
         this.log.warn("  Deleting all old device objects...");
         await this.deleteAllDevices();
         this.log.warn("  Clearing old session and performing fresh login...");
@@ -2351,8 +2124,8 @@ class MihomeCloud extends utils.Adapter {
       if (regionChanged) {
         // Region changed: Delete devices but KEEP session (session is valid across regions)
         this.log.warn("Region changed!");
-        this.log.warn("  Old region: " + cookieData.region);
-        this.log.warn("  New region: " + this.config.region);
+        this.log.warn(`  Old region: ${cookieData.region}`);
+        this.log.warn(`  New region: ${this.config.region}`);
         this.log.warn("  Deleting all old device objects...");
         await this.deleteAllDevices();
         this.log.info("  Session will be resumed with new region");
@@ -2362,14 +2135,14 @@ class MihomeCloud extends utils.Adapter {
       }
 
       // Log for debugging: Show which account's session is being loaded
-      if (cookieData.username) {
-        this.log.info("Loading session for account: " + cookieData.username);
+      if (cookieData.userId) {
+        this.log.info(`Loading session for userId: ${cookieData.userId}`);
       }
 
       // Additional validation: Check if userId in session matches expected pattern
       // If username changed but wasn't saved before, userId will be different after fresh login
       if (cookieData.session && cookieData.session.userId) {
-        this.log.debug("Session contains userId: " + cookieData.session.userId);
+        this.log.debug(`Session contains userId: ${cookieData.session.userId}`);
       }
 
       // Restore deviceId to maintain consistency
@@ -2396,12 +2169,13 @@ class MihomeCloud extends utils.Adapter {
       this.log.debug("Cookies and session loaded successfully from state");
       return true;
     } catch (error) {
-      this.log.warn("Failed to load cookies: " + error.message);
+      this.log.warn(`Failed to load cookies: ${error.message}`);
       return false;
     }
   }
   /**
    * Is called when adapter shuts down - callback has to be called under any circumstances!
+   *
    * @param {() => void} callback
    */
   onUnload(callback) {
@@ -2418,6 +2192,7 @@ class MihomeCloud extends utils.Adapter {
 
   /**
    * Is called if a subscribed state changes
+   *
    * @param {string} id
    * @param {ioBroker.State | null | undefined} state
    */
@@ -2459,7 +2234,7 @@ class MihomeCloud extends utils.Adapter {
           (this.deviceDicts[deviceId] && this.remoteCommands[this.deviceDicts[deviceId].model]) ||
           id.includes("remotePlugins.customCommand")
         ) {
-          url = "/home/rpc/" + deviceId;
+          url = `/home/rpc/${deviceId}`;
           params = state.val;
           if (id.includes("remotePlugins.customCommand")) {
             const stateArray = String(state.val).replace(/ /g, "").split(",");
@@ -2474,7 +2249,7 @@ class MihomeCloud extends utils.Adapter {
           this.log.debug(`Send remote plugin command ${JSON.stringify(data)} to ${deviceId}`);
         }
         if (id.includes(".custom.")) {
-          url = "/home/rpc/" + deviceId;
+          url = `/home/rpc/${deviceId}`;
           const stateObject = await this.getObjectAsync(id);
           if (stateObject && stateObject.native && stateObject.native.method) {
             command = stateObject.native.method;
@@ -2526,7 +2301,7 @@ class MihomeCloud extends utils.Adapter {
         const cookieHeader = await this.buildCookieHeader();
         await this.requestClient({
           method: "post",
-          url: "https://" + this.config.region + "api.io.mi.com/app" + url,
+          url: `https://${this.config.region}api.io.mi.com/app${url}`,
           headers: {
             ...this.header,
             Cookie: cookieHeader,
@@ -2563,16 +2338,16 @@ class MihomeCloud extends utils.Adapter {
             }
             const result = res.data.result;
             if (result.out) {
-              const path = this.specActionsToIdDict[result.did][result.siid + "-" + result.aiid];
+              const path = this.specActionsToIdDict[result.did][`${result.siid}-${result.aiid}`];
               this.log.debug(path);
               const stateObject = await this.getObjectAsync(path);
               if (stateObject && stateObject.native.out) {
                 const out = stateObject.native.out;
                 for (const outItem of out) {
                   const index = out.indexOf(outItem);
-                  const outPath = this.specPropsToIdDict[result.did][result.siid + "-" + outItem];
+                  const outPath = this.specPropsToIdDict[result.did][`${result.siid}-${outItem}`];
                   await this.setStateAsync(outPath, result.out[index], true);
-                  this.log.info("Set " + outPath + " to " + result.out[index]);
+                  this.log.info(`Set ${outPath} to ${result.out[index]}`);
                 }
               } else {
                 this.log.debug(JSON.stringify(result.out));
@@ -2585,9 +2360,9 @@ class MihomeCloud extends utils.Adapter {
           });
         // Refresh device state after command
         this.refreshTimeout = setTimeout(async () => {
-          this.log.debug("Update devices");
-          await this.updateDevices();
+          this.log.debug("Refreshing device states after command");
           await this.updateDevicesViaSpec();
+          await this.updateCustomStates();
         }, 10000); // 10 seconds delay
       } else {
         const resultDict = {
@@ -2602,7 +2377,7 @@ class MihomeCloud extends utils.Adapter {
         const deviceId = id.split(".")[2];
         if (resultDict[stateName]) {
           const value = state.val;
-          await this.setStateAsync(deviceId + ".remote." + resultDict[stateName], value, true);
+          await this.setStateAsync(`${deviceId}.remote.${resultDict[stateName]}`, value, true);
         }
       }
     }
@@ -2612,7 +2387,7 @@ class MihomeCloud extends utils.Adapter {
 if (require.main !== module) {
   // Export the constructor in compact mode
   /**
-   * @param {Partial<utils.AdapterOptions>} [options={}]
+   * @param {Partial<utils.AdapterOptions>} [options]
    */
   module.exports = (options) => new MihomeCloud(options);
 } else {

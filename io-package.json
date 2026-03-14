@@ -5,20 +5,55 @@
     "news": {
       "0.2.2": {
         "en": "Minor improvments with device handling",
-        "de": "Verbesserung bei der Geräteerkennung"
+        "de": "Verbesserung bei der Geräteerkennung",
+        "ru": "Незначительные улучшения в работе с устройствами.",
+        "pt": "Pequenas melhorias no manuseio do dispositivo",
+        "nl": "Kleine verbeteringen in de omgang met apparaten",
+        "fr": "Améliorations mineures de la gestion des appareils",
+        "it": "Piccoli miglioramenti nella gestione del dispositivo",
+        "es": "Mejoras menores en el manejo del dispositivo.",
+        "pl": "Drobne ulepszenia w obsłudze urządzenia",
+        "uk": "Незначні покращення в роботі з пристроєм",
+        "zh-cn": "设备处理方面的微小改进"
       },
-
       "0.2.1": {
         "en": "Fix login. Check Log after starting Adapter",
-        "de": "Login Problem behoben. Bitte überprüfe den Log nach dem Starten des Adapters"
+        "de": "Login Problem behoben. Bitte überprüfe den Log nach dem Starten des Adapters",
+        "ru": "Исправьте вход. Проверьте журнал после запуска адаптера",
+        "pt": "Corrija o login. Verifique o log após iniciar o adaptador",
+        "nl": "Inloggen repareren. Controleer Log na het starten van Adapter",
+        "fr": "Correction de la connexion. Vérifier le journal après le démarrage de l'adaptateur",
+        "it": "Correggi l'accesso. Controllare il registro dopo aver avviato l'adattatore",
+        "es": "Arreglar el inicio de sesión. Verificar registro después de iniciar el adaptador",
+        "pl": "Napraw logowanie. Sprawdź dziennik po uruchomieniu adaptera",
+        "uk": "Виправте логін. Перевірте журнал після запуску адаптера",
+        "zh-cn": "修复登录问题。启动Adapter后查看Log"
       },
       "0.1.1": {
         "en": "Bugfixes",
-        "de": "Fehlerbehebungen"
+        "de": "Fehlerbehebungen",
+        "ru": "Исправления ошибок",
+        "pt": "Correções de bugs",
+        "nl": "Bugfixes",
+        "fr": "Corrections de bugs",
+        "it": "Correzioni di bug",
+        "es": "Correcciones de errores",
+        "pl": "Poprawki błędów",
+        "uk": "Виправлення помилок",
+        "zh-cn": "错误修正"
       },
       "0.1.0": {
         "en": "Fix refresh token",
-        "de": "Refresh Token reparieren"
+        "de": "Refresh Token reparieren",
+        "ru": "Исправить токен обновления",
+        "pt": "Corrigir token de atualização",
+        "nl": "Herstel het vernieuwingstoken",
+        "fr": "Correction du jeton d'actualisation",
+        "it": "Correzione del token di aggiornamento",
+        "es": "Arreglar el token de actualización",
+        "pl": "Napraw token odświeżania",
+        "uk": "Виправити маркер оновлення",
+        "zh-cn": "修复刷新令牌"
       },
       "0.0.5": {
         "en": "added support for actions",
@@ -30,7 +65,8 @@
         "it": "aggiunto supporto per le azioni",
         "es": "se agregó soporte para acciones",
         "pl": "dodano obsługę akcji",
-        "zh-cn": "添加了对动作的支持"
+        "zh-cn": "添加了对动作的支持",
+        "uk": "додана підтримка дій"
       },
       "0.0.4": {
         "en": "initial release",
@@ -42,7 +78,8 @@
         "it": "Versione iniziale",
         "es": "Versión inicial",
         "pl": "Pierwsze wydanie",
-        "zh-cn": "首次出版"
+        "zh-cn": "首次出版",
+        "uk": "початковий випуск"
       }
     },
     "titleLang": {
@@ -55,7 +92,8 @@
       "it": "La mia nuvola domestica",
       "es": "Mi hogar en la nube",
       "pl": "Chmura domowa Mi",
-      "zh-cn": "米家云"
+      "zh-cn": "米家云",
+      "uk": "Хмара MiHome"
     },
     "desc": {
       "en": "Adapter for all MiHome Cloud devices",
@@ -67,10 +105,16 @@
       "it": "Adattatore per dispositivi MiHome Cloud",
       "es": "Adaptador para dispositivos MiHome Cloud",
       "pl": "Adapter do urządzeń MiHome Cloud",
-      "zh-cn": "小米家庭云设备适配器"
+      "zh-cn": "小米家庭云设备适配器",
+      "uk": "Адаптер для всіх пристроїв MiHome Cloud"
     },
-    "authors": ["TA2k <tombox2020@gmail.com>"],
-    "keywords": ["MiHome", "Cloud"],
+    "authors": [
+      "TA2k <tombox2020@gmail.com>"
+    ],
+    "keywords": [
+      "MiHome",
+      "Cloud"
+    ],
     "licenseInformation": {
       "type": "free",
       "license": "MIT"
@@ -97,17 +141,21 @@
     },
     "dependencies": [
       {
-        "js-controller": ">=3.3.22"
+        "js-controller": ">=6.0.11"
       }
     ],
     "globalDependencies": [
       {
-        "admin": ">=5.2.28"
+        "admin": ">=7.6.20"
       }
     ]
   },
-  "encryptedNative": ["password"],
-  "protectedNative": ["password"],
+  "encryptedNative": [
+    "password"
+  ],
+  "protectedNative": [
+    "password"
+  ],
   "native": {
     "username": "",
     "password": "",

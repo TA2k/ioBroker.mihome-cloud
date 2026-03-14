@@ -1,0 +1,92 @@
+---
+description: Interaktiver Release-Prozess für den ioBroker Adapter
+---
+
+# Release Workflow
+
+Dieser Workflow beschreibt, wie ein Release **gemeinsam mit dem AI-Assistenten** durchgeführt wird.
+Er kombiniert maximale Automatisierung mit einer gezielten manuellen Review-Phase.
+
+## Voraussetzungen
+
+Bevor du den Workflow startest, stell sicher, dass:
+- Alle geplanten Änderungen committed und gepusht sind
+- Du auf dem `main`-Branch bist
+- Das Working Tree sauber ist (`git status`)
+
+---
+
+## Schritt 1 – Release vorbereiten (AI-Aufgabe)
+
+Sage dem Assistenten, dass du einen Release machen möchtest. Er übernimmt dann automatisch:
+
+1. **Änderungen seit dem letzten Tag ermitteln:**
+```bash
+git log $(git describe --tags --abbrev=0)..HEAD --oneline
+```
+
+2. **Aktuellen Stand prüfen** (Version, offene Issues, Changelog-Platzhalter in README.md)
+
+3. **Release-Typ empfehlen** basierend auf den Änderungen:
+   - `patch` → Bugfixes, kleinere Verbesserungen
+   - `minor` → Neue Features, rückwärtskompatibel
+   - `major` → Breaking Changes
+
+4. **Changelog-Einträge formulieren** – der Assistent schlägt saubere, präzise Changelog-Sätze vor, die du bestätigst oder anpasst.
+
+5. **Changelog in README.md eintragen** – unter dem neuen Versions-Header, bereit für den Release-Script.
+
+---
+
+## Schritt 2 – Release-Script starten
+
+Wenn Changelog und Version abgesegnet sind, startet der Assistent das Release-Script:
+
+// turbo
+```bash
+npm run release -- patch
+```
+
+*(oder `minor`/`major` je nach Release-Typ)*
+
+Das Script läuft automatisch durch:
+- ✅ **Lint-Check** (`npm run lint`) – bricht sofort ab wenn Fehler
+- ✅ **Tests** (`npm test`) – bricht sofort ab wenn Tests fehlschlagen
+- ✅ Lizenz-Check
+- ✅ Version in `package.json` bumpen
+- ✅ Version + News in `io-package.json` setzen
+- ✅ Changelog-Einträge in alle 11 ioBroker-Sprachen übersetzen
+- ⏸️ **PAUSE** – `manual-review` hält den Prozess an
+
+---
+
+## Schritt 3 – Manuelle Review (gemeinsam)
+
+Während der Pause prüfen wir gemeinsam die generierten Änderungen:
+
+Der Assistent liest automatisch die modifizierten Dateien und gibt dir einen Überblick:
+- `README.md` – Changelog korrekt?
+- `io-package.json` – Übersetzungen plausibel? News-Einträge vollständig?
+- `package.json` – Versionsnummer stimmt?
+
+Wenn alles passt: **Enter drücken** im Terminal, um den Release abzuschließen.
+Bei Problemen: Im Terminal **Ctrl+C** abbrechen und Korrekturen vornehmen.
+
+---
+
+## Schritt 4 – Automatischer Abschluss
+
+Nach der Bestätigung läuft alles automatisch:
+- ✅ Git-Commit mit allen Änderungen
+- ✅ Git-Tag `vX.Y.Z` erstellen
+- ✅ Push zu GitHub (löst CI/CD aus)
+- ✅ GitHub Actions baut und veröffentlicht auf NPM
+- ✅ Neuer leerer Changelog-Platzhalter wird in README.md eingefügt
+
+---
+
+## Hinweise
+
+- **DeepL statt ioBroker Translator:** Für bessere Übersetzungen kann `DEEPL_API_KEY` gesetzt werden.
+- **Nur Tag pushen** (bei Branch-Protection): `npm run release -- patch --tagOnly`
+- **Prerelease:** Für Alpha/Beta-Versionen `npm run release -- patch --preid alpha`
