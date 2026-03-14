@@ -1,0 +1,5 @@
+{
+    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Login Guide: After saving and starting the adapter, a login URL will appear in the adapter log. Open this URL in your browser to log in with your Xiaomi account. The adapter will then automatically connect.",
+    "region": "Region",
+    "update_interval__in_minutes_": "Update interval (in minutes)"
+}

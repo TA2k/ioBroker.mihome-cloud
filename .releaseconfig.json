@@ -1,5 +1,5 @@
 {
-    "plugins": ["iobroker", "license"],
+    "plugins": ["iobroker", "manual-review", "license"],
     "license": "MIT",
     "addPlaceholder": true,
     "exec": {

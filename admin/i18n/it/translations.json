@@ -1,0 +1,5 @@
+{
+    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Come accedere: Dopo aver salvato le impostazioni e avviato l'adattatore, un URL di accesso apparirà nel registro dell'adattatore. Apri questo URL nel browser e accedi con il tuo account Xiaomi. L'adattatore si connetterà automaticamente.",
+    "region": "Regione",
+    "update_interval__in_minutes_": "Intervallo di aggiornamento (in minuti)"
+}

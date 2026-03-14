@@ -1,0 +1,5 @@
+{
+    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Cómo iniciar sesión: Después de guardar la configuración e iniciar el adaptador, aparecerá una URL de inicio de sesión en el registro del adaptador. Abra esta URL en su navegador e inicie sesión con su cuenta Xiaomi. El adaptador se conectará automáticamente.",
+    "region": "Región",
+    "update_interval__in_minutes_": "Intervalo de actualización (en minutos)"
+}

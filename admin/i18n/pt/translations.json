@@ -1,0 +1,5 @@
+{
+    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Como fazer login: Após salvar as configurações e iniciar o adaptador, um URL de login aparecerá no log do adaptador. Abra este URL no navegador e faça login com sua conta Xiaomi. O adaptador se conectará automaticamente.",
+    "region": "Região",
+    "update_interval__in_minutes_": "Intervalo de atualização (em minutos)"
+}

@@ -2,6 +2,7 @@
 .*/
 !.vscode/
 !.github/
+!.agents/
 
 *.code-workspace
 node_modules

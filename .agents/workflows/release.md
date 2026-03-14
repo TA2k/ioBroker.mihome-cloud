@@ -27,10 +27,12 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 
 2. **Aktuellen Stand prüfen** (Version, offene Issues, Changelog-Platzhalter in README.md)
 
-3. **Release-Typ empfehlen** basierend auf den Änderungen:
-   - `patch` → Bugfixes, kleinere Verbesserungen
-   - `minor` → Neue Features, rückwärtskompatibel
-   - `major` → Breaking Changes
+3. **Repository-Check durchführen:**
+   Der Assistent führt den `repochecker` aus, um sicherzustellen, dass keine formalen Fehler vorliegen:
+   ```bash
+   npx @iobroker/repochecker TA2k/ioBroker.mihome-cloud
+   ```
+   *Hinweis: Fehler `E2004` (Version noch nicht auf NPM) und Warnung `W2002` (Versions-Mismatch) können ignoriert werden, da diese erst NACH dem Release verschwinden.*
 
 4. **Changelog-Einträge formulieren** – der Assistent schlägt saubere, präzise Changelog-Sätze vor, die du bestätigst oder anpasst.
 

@@ -1,20 +1,33 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "news": {
+      "1.0.1": {
+        "en": "Refinement of German translations and login flow description\nMigration to external i18n files for better maintainability\nAdded Repochecker to the release workflow",
+        "de": "Verfeinerung der deutschen Übersetzungen und der Login-Flow-Beschreibung\nMigration auf externe i18n-Dateien zur besseren Wartbarkeit\nRepochecker zum Release-Workflow hinzugefügt",
+        "ru": "Уточнение немецких переводов и описания процесса входа\nМиграция на внешние файлы i18n для лучшей поддержки\nДобавлен Repochecker в процесс выпуска",
+        "pt": "Refinamento das traduções alemãs e da descrição do fluxo de login\nMigração para arquivos i18n externos para melhor manutenção\nAdicionado Repochecker ao fluxo de lançamento",
+        "nl": "Verfijning van de Duitse vertalingen en beschrijving van de inlogstroom\nMigratie naar externe i18n-bestanden voor beter onderhoud\nRepochecker toegevoegd aan de release-workflow",
+        "fr": "Affinage des traductions allemandes et de la description du flux de connexion\nMigration vers des fichiers i18n externes pour une meilleure maintenance\nAjout de Repochecker au flux de version",
+        "it": "Affinamento delle traduzioni tedesche e della descrizione del flusso di login\nMigrazione a file i18n esterni per una migliore manutenibilità\nAggiunto Repochecker al workflow di release",
+        "es": "Refinamiento de las traducciones al alemán y descripción del flujo de inicio de sesión\nMigración a archivos i18n externos para una mejor mantenibilidad\nSe agregó Repochecker al flujo de lanzamiento",
+        "pl": "Dopracowanie niemieckich tłumaczeń i opisu procesu logowania\nMigracja do zewnętrznych plików i18n dla lepszej konserwacji\nDodano Repochecker do przepływu pracy wydania",
+        "uk": "Уточнення німецьких перекладів та опису процесу входу\nМіграція на зовнішні файли i18n для кращої підтримки\nДодано Repochecker до процесу випуску",
+        "zh-cn": "优化德语翻译和登录流程说明\n迁移到外部 i18n 文件以提高可维护性\n版本发布流程中添加了 Repochecker"
+      },
       "1.0.0": {
-        "en": "Complete rewrite with QR-code login\nImproved error handling for network interruptions (ECONNRESET, DB closed)\nUpdated dependencies and fixed known vulnerabilities\nAdded all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nUpdated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nAdded release-script support",
-        "de": "Vollständige Neugestaltung mit QR-Code-Anmeldung\nVerbesserte Fehlerbehandlung bei Netzunterbrechungen (ECONNRESET, DB geschlossen)\nAktualisierte Abhängigkeiten und feste bekannte Schwachstellen\nAlle fehlenden Übersetzungen hinzugefügt (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAktualisiert auf Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint auf Flat-Config migriert\nUnterstützung für Release-Script",
-        "ru": "Полная перезапись с QR-кодом\nУлучшенная обработка ошибок при прерываниях сети (ECONNRESET, DB закрыт)\nОбновленные зависимости и исправленные известные уязвимости\nДобавлены все недостающие переводы (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОбновлено до Node.js >= 20, js-контроллер >= 6.0.11, админ >= 7.6.20\nМиграция ESLint в плоскую конфигурацию\nДобавлена поддержка release-script",
-        "pt": "Reescrita completa com login de QR-code\nMelhor manipulação de erros para interrupções de rede (ECONNRESET, DB fechado)\nDependências atualizadas e vulnerabilidades conhecidas fixas\nAdicionadas todas as traduções em falta (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAtualizado em Node.js >= 20, js-controlador >= 6.0.11, administrador >= 7.6.20\nESLint migrado para a configuração plana\nAdicionado suporte de versão- script",
-        "nl": "Complete herschrijving met QR-code login\nVerbeterde foutafhandeling voor netwerkonderbrekingen (ECONNRESET, DB gesloten)\nBijgewerkte afhankelijkheden en vaste bekende kwetsbaarheden\nToegevoegd alle ontbrekende vertalingen (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nBijgewerkt aan Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nESLint naar platte configuratie migreren\nRelease-script ondersteuning toegevoegd",
-        "fr": "Réécriture complète avec connexion QR-code\nAmélioration du traitement des erreurs pour les interruptions de réseau (ECONNESET, DB fermée)\nDépendances actualisées et vulnérabilités connues fixes\nAjout de toutes les traductions manquantes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nMise à jour sur Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigré ESLint en configuration plate\nAjout d'un support de release-script",
-        "it": "Riscrittura completa con login QR-code\nGestione degli errori migliorata per interruzioni di rete (ECONNRESET, DB chiuso)\nDipendenze aggiornate e vulnerabilità note fisse\nAggiunto tutte le traduzioni mancanti (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAggiornato a Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint a flat config\nAggiunto supporto release-script",
-        "es": "Reescritura completa con inicio de sesión QR-code\nMejor manejo de errores para interrupciones de red (ECONNRESET, DB cerrado)\nDependencias actualizadas y vulnerabilidades conocidas fijas\nAñadido todas las traducciones faltantes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nActualizado en Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nApoyo a la publicación",
-        "pl": "Całkowite przepisywanie z logowaniem QR-code\nPoprawa obsługi błędów w przypadku przerw w sieci (ECONNRESET, DB zamknięty)\nAktualizacja zależności i ustalone znane słabe punkty\nDodano wszystkie brakujące tłumaczenia (uk, ru, pt, nl, fr, it, es, pl, zh- cn)\nAktualizacja do Node.js >= 20, kontroler js- >= 6.0.11, admin >= 7.6.20\nMigrated ESLint to flat config\nDodano obsługę release- script",
-        "uk": "Повний перепис з входом QR-коду\nУдосконалено процес обробки помилок для мережевих перерв (ECONNRESET, DB закритих)\nОновлені залежності та виправлені відомі вразливості\nДодано всі відсутні переклади (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОновлено до Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrated ESLint на плоску конфігурацію\nДодано підтримку сценарію релізу",
-        "zh-cn": "完成 QR 码登录重写\n改进网络中断错误处理(EONNRESET, DB 关闭)\n更新的依赖性和已知的固定脆弱性\n添加所有缺失的译名( uk, ru, pt, nl, fr, it, es, pl, zh- cn)\n更新至Node.js >= 20,js控制器 >= 6.0.11, admin >= 7.6.20\n移动到平面配置\n添加发布脚本支持"
+        "en": "Complete rewrite with login URL (QR-code login flow)\nImproved error handling for network interruptions (ECONNRESET, DB closed)\nUpdated dependencies and fixed known vulnerabilities\nAdded all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nUpdated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigration to ESLint flat config\nAdded release-script support",
+        "de": "Vollständiger Rewrite mit Login-URL (QR-Code Login-Flow)\nVerbesserte Fehlerbehandlung bei Netzunterbrechungen (ECONNRESET, DB geschlossen)\nAbhängigkeiten aktualisiert und bekannte Sicherheitslücken behoben\nAlle fehlenden Übersetzungen hinzugefügt\nAktualisiert auf Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigration auf ESLint Flat-Config\nUnterstützung für Release-Script hinzugefügt",
+        "ru": "Полная перезапись с использованием URL-адреса входа (процесс входа по QR-коду)\nУлучшена обработка ошибок при сетевых прерываниях (ECONNRESET, DB закрыта)\nОбновлены зависимости и исправлены известные уязвимости\nДобавлены все недостающие переводы (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОбновлено до Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nМиграция на плоскую конфигурацию ESLint\nДобавлена поддержка скрипта выпуска",
+        "pt": "Reescrita completa com URL de login (fluxo de login por código QR)\nMelhoria no tratamento de erros para interrupções de rede (ECONNRESET, banco de dados fechado)\nAtualização de dependências e correção de vulnerabilidades conhecidas\nAdição de todas as traduções ausentes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAtualizado para Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigração para a configuração simples do ESLint\nAdicionado suporte para script de lançamento",
+        "nl": "Volledige herschrijving met inlog-URL (QR-code inlogstroom)\nVerbeterde foutafhandeling voor netwerkonderbrekingen (ECONNRESET, DB gesloten)\nAfhankelijkheden bijgewerkt en bekende kwetsbaarheden verholpen\nAlle ontbrekende vertalingen toegevoegd (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nBijgewerkt naar Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigratie naar ESLint flat config\nOndersteuning voor release-script toegevoegd",
+        "fr": "Réécriture complète avec URL de connexion (flux de connexion par code QR)\nGestion des erreurs améliorée pour les interruptions de réseau (ECONNRESET, base de données fermée)\nDépendances mises à jour et vulnérabilités connues corrigées\nAjout de toutes les traductions manquantes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nMise à jour vers Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigration vers la configuration plate ESLint\nAjout du support du script de version",
+        "it": "Riscrittura completa con URL di login (flusso di login tramite codice QR)\nGestione degli errori migliorata per interruzioni di rete (ECONNRESET, DB chiuso)\nDipendenze aggiornate e vulnerabilità note corrette\nAggiunte tutte le traduzioni mancanti (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAggiornato a Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigrazione alla configurazione flat di ESLint\nAggiunto il supporto per lo script di rilascio",
+        "es": "Reescritura completa con URL de inicio de sesión (flujo de inicio de sesión con código QR)\nManejo de errores mejorado para interrupciones de red (ECONNRESET, base de datos cerrada)\nDependencias actualizadas y vulnerabilidades conocidas corregidas\nSe agregaron todas las traducciones faltantes (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nActualizado a Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigración a la configuración plana de ESLint\nSe agregó compatibilidad con el script de lanzamiento",
+        "pl": "Całkowite przepisanie z adresem URL logowania (przepływ logowania kodem QR)\nUlepszona obsługa błędów w przypadku przerw w sieci (ECONNRESET, zamknięta baza danych)\nZaktualizowano zależności i naprawiono znane luki w zabezpieczeniach\nDodano wszystkie brakujące tłumaczenia (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nAktualizacja do Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nMigracja do płaskiej konfiguracji ESLint\nDodano obsługę skryptu wydania",
+        "uk": "Повний перепис з використанням URL-адреси входу (процес входу за QR-кодом)\nПокращено обробку помилок при мережевих перервах (ECONNRESET, БД закрита)\nОновлено залежності та виправлено відомі вразливості\nДодано всі відсутні переклади (uk, ru, pt, nl, fr, it, es, pl, zh-cn)\nОновлено до Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\nМіграція на плоску конфігурацію ESLint\nДодано підтримку сценарію випуску",
+        "zh-cn": "使用登录 URL（二维码登录流程）完全重写\n改进了网络中断（ECONNRESET、数据库关闭）时的错误处理\n更新了依赖项并修复了已知漏洞\n添加了所有缺少的翻译（uk, ru, pt, nl, fr, it, es, pl, zh-cn）\n更新到 Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20\n迁移到 ESLint flat 配置\n添加了发布脚本支持"
       },
       "0.2.2": {
         "en": "Minor improvments with device handling",
@@ -80,19 +93,6 @@
         "pl": "dodano obsługę akcji",
         "zh-cn": "添加了对动作的支持",
         "uk": "додана підтримка дій"
-      },
-      "0.0.4": {
-        "en": "initial release",
-        "de": "Erstveröffentlichung",
-        "ru": "Начальная версия",
-        "pt": "lançamento inicial",
-        "nl": "Eerste uitgave",
-        "fr": "Première version",
-        "it": "Versione iniziale",
-        "es": "Versión inicial",
-        "pl": "Pierwsze wydanie",
-        "zh-cn": "首次出版",
-        "uk": "початковий випуск"
       }
     },
     "titleLang": {

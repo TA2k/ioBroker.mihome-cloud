@@ -115,13 +115,22 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
-### 1.0.0 (2026-03-14)
+### **WORK IN PROGRESS**
+- Consolidation of previous refinements into a stable release
+- Verified repository standards with Repochecker
 
+### 1.0.1 (2026-03-14)
+- Migration to external i18n files for better maintainability
+- Refinement of German translations and login flow description
+- Integration of Repochecker into the development workflow
+
+### 1.0.0 (2026-03-14)
+- Complete rewrite with login URL (QR-code login flow)
 - Improved error handling for network interruptions (ECONNRESET, DB closed)
 - Updated dependencies and fixed known vulnerabilities
 - Added all missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)
 - Updated to Node.js >= 20, js-controller >= 6.0.11, admin >= 7.6.20
-- Migrated ESLint to flat config
+- Migration to ESLint flat config
 - Added release-script support
 
 ### 0.2.2

@@ -857,6 +857,8 @@ class MihomeCloud extends utils.Adapter {
         const propKey = prop.prop_key.replace("prop.", "").replace(/\./g, "_");
 
         // Determine type and role
+        // eslint-disable-next-line jsdoc/check-tag-names
+        /** @type {ioBroker.CommonType} */
         let type = "mixed";
         let role = "state";
         let min = undefined;
@@ -904,11 +906,11 @@ class MihomeCloud extends utils.Adapter {
           type: "state",
           common: {
             name: name,
-            type: /** @type {ioBroker.CommonType} */ (type),
+            type: type,
             role: role,
             min: min,
             max: max,
-            states: /** @type {string | string[] | Record<string, string> | undefined} */ (states),
+            states: states,
             unit: prop.prop_unit,
             write: true,
             read: true,
@@ -1049,6 +1051,8 @@ class MihomeCloud extends utils.Adapter {
               `Found ${property_data.write ? "writable" : "read-only"} property for ${device.model} ${property_data.service.description} ${property_data.property.description}`,
             );
 
+            // eslint-disable-next-line jsdoc/check-tag-names
+            /** @type {Record<string, string>} */
             const states = {};
             if (property_data.property["value-list"]) {
               for (const value of property_data.property["value-list"]) {
@@ -1072,14 +1076,12 @@ class MihomeCloud extends utils.Adapter {
               type: "state",
               common: {
                 name: `${property_data.service.description} - ${property_data.property.description}`,
-                type: /** @type {ioBroker.CommonType} */ (type),
+                type: type,
                 role: role,
                 unit: unit,
                 min: property_data.property["value-range"] ? property_data.property["value-range"][0] : undefined,
                 max: property_data.property["value-range"] ? property_data.property["value-range"][1] : undefined,
-                states: /** @type {string | string[] | Record<string, string> | undefined} */ (
-                  property_data.property["value-list"] ? states : undefined
-                ),
+                states: property_data.property["value-list"] ? states : undefined,
                 write: property_data.write,
                 read: true,
               },
@@ -1140,10 +1142,14 @@ class MihomeCloud extends utils.Adapter {
             }
 
             // Actions should be buttons, not switches (executed with one click)
+            // eslint-disable-next-line jsdoc/check-tag-names
+            /** @type {ioBroker.CommonType} */
             let type = "boolean";
             let role = "button";
             this.log.debug(`Found action for ${device.model} ${service.description} ${action.description}`);
 
+            // eslint-disable-next-line jsdoc/check-tag-names
+            /** @type {Record<string, string>} */
             const states = {};
             if (action["value-list"]) {
               for (const value of action["value-list"]) {
@@ -1182,12 +1188,12 @@ class MihomeCloud extends utils.Adapter {
               type: "state",
               common: {
                 name: `${service.description} - ${action.description}`,
-                type: /** @type {ioBroker.CommonType} */ (type),
+                type: type,
                 role: role,
                 unit: unit,
                 min: action["value-range"] ? action["value-range"][0] : undefined,
                 max: action["value-range"] ? action["value-range"][1] : undefined,
-                states: /** @type {string | string[] | Record<string, string> | undefined} */ (action["value-list"] ? states : undefined),
+                states: action["value-list"] ? states : undefined,
                 write: true,
                 read: true,
                 def: def != null ? def : undefined,
@@ -1401,6 +1407,15 @@ class MihomeCloud extends utils.Adapter {
 
     return { nonce, data_rc, rc4_hash_rc, signature, signedNonce, rc4 };
   }
+
+  /**
+   * Determine ioBroker state type and role based on MIoT property definition.
+   *
+   * @param {string} element
+   * @param {boolean} write
+   * @param {any} valueRange
+   * @returns {[ioBroker.CommonType, string]} [type, role]
+   */
   getRole(element, write, valueRange) {
     if (!element) {
       return ["boolean", "switch"];
@@ -1691,6 +1706,8 @@ class MihomeCloud extends utils.Adapter {
 
               if (needsUpdate) {
                 // Determine proper ioBroker type from value
+                // eslint-disable-next-line jsdoc/check-tag-names
+                /** @type {ioBroker.CommonType} */
                 let ioType = "mixed";
                 if (typeof value === "boolean") {
                   ioType = "boolean";
@@ -1705,7 +1722,7 @@ class MihomeCloud extends utils.Adapter {
                   type: "state",
                   common: {
                     name: propDef?.prop_name?.en || propDef?.prop_name?.zh_CN || field,
-                    type: /** @type {ioBroker.CommonType} */ (ioType),
+                    type: ioType,
                     role: "value",
                     unit: propDef?.prop_unit,
                     read: true,
@@ -2215,6 +2232,8 @@ class MihomeCloud extends utils.Adapter {
         //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
 
         const stateObject = await this.getObjectAsync(id);
+        // eslint-disable-next-line jsdoc/check-tag-names
+        /** @type {any} */
         let params = [];
         if (stateObject && stateObject.common.type === "mixed") {
           try {
@@ -2224,6 +2243,7 @@ class MihomeCloud extends utils.Adapter {
           }
         }
         let url = "/v2/device/batchgetdatas";
+        // eslint-disable-next-line jsdoc/check-tag-names
         /** @type {any} */
         let data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
 
@@ -2238,12 +2258,11 @@ class MihomeCloud extends utils.Adapter {
           id.includes("remotePlugins.customCommand")
         ) {
           url = `/home/rpc/${deviceId}`;
-          /** @type {any} */
-          params = /** @type {any} */ (state.val);
+          params = state.val;
           if (id.includes("remotePlugins.customCommand")) {
             const stateArray = String(state.val).replace(/ /g, "").split(",");
             command = stateArray[0];
-            params = /** @type {any} */ (stateArray[1]);
+            params = stateArray[1];
           }
           try {
             data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: JSON.parse(`[${JSON.stringify(params)}]`) };
@@ -2257,12 +2276,11 @@ class MihomeCloud extends utils.Adapter {
           const stateObject = await this.getObjectAsync(id);
           if (stateObject && stateObject.native && stateObject.native.method) {
             command = stateObject.native.method;
-            /** @type {any} */
-            params = /** @type {any} */ (state.val);
+            params = state.val;
 
             // Handle boolean values (convert to on/off)
             if (typeof state.val === "boolean") {
-              params = /** @type {any} */ (state.val ? "on" : "off");
+              params = state.val ? "on" : "off";
             }
 
             try {

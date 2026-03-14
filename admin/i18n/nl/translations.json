@@ -1,0 +1,5 @@
+{
+    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Inloggen: Na het opslaan van de instellingen en het starten van de adapter verschijnt er een inlog-URL in het adapter-logboek. Open deze URL in uw browser en log in met uw Xiaomi-account. De adapter maakt dan automatisch verbinding.",
+    "region": "Region",
+    "update_interval__in_minutes_": "Update-interval (in minuten)"
+}
