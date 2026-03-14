@@ -904,11 +904,11 @@ class MihomeCloud extends utils.Adapter {
           type: "state",
           common: {
             name: name,
-            type: type,
+            type: /** @type {ioBroker.CommonType} */ (type),
             role: role,
             min: min,
             max: max,
-            states: states,
+            states: /** @type {string | string[] | Record<string, string> | undefined} */ (states),
             unit: prop.prop_unit,
             write: true,
             read: true,
@@ -1072,12 +1072,14 @@ class MihomeCloud extends utils.Adapter {
               type: "state",
               common: {
                 name: `${property_data.service.description} - ${property_data.property.description}`,
-                type: type,
+                type: /** @type {ioBroker.CommonType} */ (type),
                 role: role,
                 unit: unit,
                 min: property_data.property["value-range"] ? property_data.property["value-range"][0] : undefined,
                 max: property_data.property["value-range"] ? property_data.property["value-range"][1] : undefined,
-                states: property_data.property["value-list"] ? states : undefined,
+                states: /** @type {string | string[] | Record<string, string> | undefined} */ (
+                  property_data.property["value-list"] ? states : undefined
+                ),
                 write: property_data.write,
                 read: true,
               },
@@ -1180,12 +1182,12 @@ class MihomeCloud extends utils.Adapter {
               type: "state",
               common: {
                 name: `${service.description} - ${action.description}`,
-                type: type,
+                type: /** @type {ioBroker.CommonType} */ (type),
                 role: role,
                 unit: unit,
                 min: action["value-range"] ? action["value-range"][0] : undefined,
                 max: action["value-range"] ? action["value-range"][1] : undefined,
-                states: action["value-list"] ? states : undefined,
+                states: /** @type {string | string[] | Record<string, string> | undefined} */ (action["value-list"] ? states : undefined),
                 write: true,
                 read: true,
                 def: def != null ? def : undefined,
@@ -1297,7 +1299,7 @@ class MihomeCloud extends utils.Adapter {
     // Build headers matching Python's execute_api_call_encrypted
     const cookieHeader = await this.buildCookieHeader();
     return {
-      "User-Agent": this.header["User-Agent"],
+      "User-Agent": this.header?.["User-Agent"] || "",
       "Content-Type": "application/x-www-form-urlencoded",
       "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
       "MIOT-ENCRYPT-ALGORITHM": "ENCRYPT-RC4",
@@ -1703,7 +1705,7 @@ class MihomeCloud extends utils.Adapter {
                   type: "state",
                   common: {
                     name: propDef?.prop_name?.en || propDef?.prop_name?.zh_CN || field,
-                    type: ioType,
+                    type: /** @type {ioBroker.CommonType} */ (ioType),
                     role: "value",
                     unit: propDef?.prop_unit,
                     read: true,
@@ -2222,6 +2224,7 @@ class MihomeCloud extends utils.Adapter {
           }
         }
         let url = "/v2/device/batchgetdatas";
+        /** @type {any} */
         let data = [{ did: deviceId, props: ["event.status"], accessKey: "IOS00026747c5acafc2" }];
 
         if (deviceId === "scenes") {
@@ -2235,11 +2238,12 @@ class MihomeCloud extends utils.Adapter {
           id.includes("remotePlugins.customCommand")
         ) {
           url = `/home/rpc/${deviceId}`;
-          params = state.val;
+          /** @type {any} */
+          params = /** @type {any} */ (state.val);
           if (id.includes("remotePlugins.customCommand")) {
             const stateArray = String(state.val).replace(/ /g, "").split(",");
             command = stateArray[0];
-            params = stateArray[1];
+            params = /** @type {any} */ (stateArray[1]);
           }
           try {
             data = { id: 0, method: command, accessKey: "IOS00026747c5acafc2", params: JSON.parse(`[${JSON.stringify(params)}]`) };
@@ -2253,11 +2257,12 @@ class MihomeCloud extends utils.Adapter {
           const stateObject = await this.getObjectAsync(id);
           if (stateObject && stateObject.native && stateObject.native.method) {
             command = stateObject.native.method;
-            params = state.val;
+            /** @type {any} */
+            params = /** @type {any} */ (state.val);
 
             // Handle boolean values (convert to on/off)
             if (typeof state.val === "boolean") {
-              params = state.val ? "on" : "off";
+              params = /** @type {any} */ (state.val ? "on" : "off");
             }
 
             try {
