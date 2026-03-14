@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "news": {
+      "1.0.3": {
+        "en": "Updated `configDes.js` with many new Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)\nAdded environment properties (Temperature, Humidity) to many device configurations\nConsolidated device definitions for better maintainability",
+        "de": "Aktualisierte `configDes.js` mit vielen neuen Xiaomi Gerätemodellen (Air Purifiers 4 Serie, neuere Lüfter/Heizer, Robotervakuum)\nHinzufügen von Umgebungseigenschaften (Temperatur, Feuchtigkeit) zu vielen Gerätekonfigurationen\nKonsolidierte Gerätedefinitionen für eine bessere Aufrechterhaltungsfähigkeit",
+        "ru": "Обновленный ConfigDes.js со многими новыми моделями устройств Xiaomi (Air Purifiers 4 серии, новые вентиляторы / нагреватели, роботы-пылесосы)\nДобавлены свойства среды (температура, влажность) ко многим конфигурациям устройств\nКонсолидированные определения устройств для улучшения ремонтопригодности",
+        "pt": "Atualizado `configDes.js` com muitos novos modelos de dispositivos Xiaomi (Air Purifiers 4 série, ventiladores/aquecedores mais recentes, vácuos de robôs)\nPropriedades de ambiente adicionadas (Temperatura, Humidade) a muitas configurações de dispositivos\nDefinições consolidadas do dispositivo para uma melhor manutenção",
+        "nl": "Geactualiseerd ConfigDes.js.Js met vele nieuwe Xiaomi apparaat modellen (Air Purifiers 4-serie, nieuwere ventilatoren / verwarmingsers, robot vacuüms)\nToegevoegd omgevingseigenschappen (Temperatuur, Vochtigheid) aan vele apparaatconfiguraties\nGeconsolideerde definities van de voorziening voor een betere houdbaarheid",
+        "fr": "Mise à jour `configDes.js` avec de nombreux nouveaux modèles de périphériques Xiaomi (Série 4 Purificateurs d'air, ventilateurs/chauffeurs plus récents, aspirateurs robots)\nAjout de propriétés d'environnement (température, humidité) à de nombreuses configurations de périphériques\nDéfinition consolidée des dispositifs pour une meilleure maintenance",
+        "it": "Aggiornato `configDes.js` con molti nuovi modelli di dispositivo Xiaomi (Air Purifiers 4 serie, ventilatori/riscaldatori più recenti, vuoto robot)\nAggiunte proprietà dell'ambiente (Temperatura, umidità) a molte configurazioni del dispositivo\nDefinizioni del dispositivo consolidate per una migliore manutenbilità",
+        "es": "Actualizado `configDes.js` con muchos nuevos modelos de dispositivos Xiaomi (Air Purifiers 4 series, nuevos ventiladores/calentadores, vacíos de robot)\nPropiedades de ambiente agregadas (Temperatura, Humedad) a muchas configuraciones de dispositivos\nDefiniciones consolidadas de dispositivos para una mejor mantenimiento",
+        "pl": "Aktualizacja 'configDes.js' z wieloma nowymi modelami urządzeń Xiaomi (Oczyszczacze powietrza z serii 4, nowsze wentylatory / ogrzewacze, odkurzacze robota)\nDodano właściwości środowiska (Temperatura, Wilgotność) do wielu konfiguracji urządzeń\nSkonsolidowane definicje urządzeń w celu lepszej konserwacji",
+        "uk": "Оновлено `configDes.js` з багатьма новими моделями пристроїв Xiaomi (Air Purifiers 4 серії, нові вентилятори / теплювачі, вакуумні роботи)\nДодано властивості навколишнього середовища (Temperature, Humidity) до багатьох конфігурації пристроїв\nКонсолідовані визначення пристроїв для кращої підтримки",
+        "zh-cn": "以许多新的小米设备模型(空气净化器4系列,更新的风扇/加热器,机器人真空)更新了“配置Des.js”\n在许多设备配置中添加环境属性( 温度、 湿度)\n综合装置定义,以更好地维护"
+      },
       "1.0.2": {
         "en": "Consolidation of previous refinements into a stable release\nVerified repository standards with Repochecker",
         "de": "Konsolidierung früherer Ausgestaltungen in eine stabile Freigabe\nVerifizierte Repository-Standards mit Repochecker",
@@ -80,19 +93,6 @@
         "pl": "Poprawki błędów",
         "uk": "Виправлення помилок",
         "zh-cn": "错误修正"
-      },
-      "0.1.0": {
-        "en": "Fix refresh token",
-        "de": "Refresh Token reparieren",
-        "ru": "Исправить токен обновления",
-        "pt": "Corrigir token de atualização",
-        "nl": "Herstel het vernieuwingstoken",
-        "fr": "Correction du jeton d'actualisation",
-        "it": "Correzione del token di aggiornamento",
-        "es": "Arreglar el token de actualización",
-        "pl": "Napraw token odświeżania",
-        "uk": "Виправити маркер оновлення",
-        "zh-cn": "修复刷新令牌"
       }
     },
     "titleLang": {
