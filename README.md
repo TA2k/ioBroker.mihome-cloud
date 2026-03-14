@@ -115,7 +115,7 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 1.0.2 (2026-03-14)
 - Consolidation of previous refinements into a stable release
 - Verified repository standards with Repochecker
 

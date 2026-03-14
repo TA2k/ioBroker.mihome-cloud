@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "news": {
+      "1.0.2": {
+        "en": "Consolidation of previous refinements into a stable release\nVerified repository standards with Repochecker",
+        "de": "Konsolidierung früherer Ausgestaltungen in eine stabile Freigabe\nVerifizierte Repository-Standards mit Repochecker",
+        "ru": "Консолидация предыдущих усовершенствований в стабильный выпуск\nПроверенные стандарты репозитория с Repochecker",
+        "pt": "Consolidação de refinamentos anteriores em uma liberação estável\nPadrões de repositório verificados com o Repochecker",
+        "nl": "Consolidatie van eerdere verfijningen tot een stabiele release\nGeverifieerde repository standaarden met Repochecker",
+        "fr": "Consolidation des raffinements antérieurs en une libération stable\nNormes de dépôt vérifiées avec Repochecker",
+        "it": "Consolidamento dei precedenti perfezionamenti in un rilascio stabile\nStandard di repository verificati con Repochecker",
+        "es": "Consolidación de las refinerías anteriores en una liberación estable\nNormas de repositorio verificadas con Repochecker",
+        "pl": "Konsolidacja wcześniejszych udoskonaleń w stabilne uwolnienie\nZweryfikowane standardy repozytorium z Repochecker",
+        "uk": "Консолідація попередніх рефінментів у стабільний випуск\nПеревірені стандарти репозиторій з Repochecker",
+        "zh-cn": "将以往的改进整合为稳定的释放\n用 Repochecker 验证寄存器标准"
+      },
       "1.0.1": {
         "en": "Refinement of German translations and login flow description\nMigration to external i18n files for better maintainability\nAdded Repochecker to the release workflow",
         "de": "Verfeinerung der deutschen Übersetzungen und der Login-Flow-Beschreibung\nMigration auf externe i18n-Dateien zur besseren Wartbarkeit\nRepochecker zum Release-Workflow hinzugefügt",
@@ -80,19 +93,6 @@
         "pl": "Napraw token odświeżania",
         "uk": "Виправити маркер оновлення",
         "zh-cn": "修复刷新令牌"
-      },
-      "0.0.5": {
-        "en": "added support for actions",
-        "de": "Unterstützung für Aktionen hinzugefügt",
-        "ru": "добавлена поддержка действий",
-        "pt": "adicionado suporte para ações",
-        "nl": "ondersteuning voor acties toegevoegd",
-        "fr": "ajout de la prise en charge des actions",
-        "it": "aggiunto supporto per le azioni",
-        "es": "se agregó soporte para acciones",
-        "pl": "dodano obsługę akcji",
-        "zh-cn": "添加了对动作的支持",
-        "uk": "додана підтримка дій"
       }
     },
     "titleLang": {
