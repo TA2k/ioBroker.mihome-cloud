@@ -74,9 +74,17 @@ class MihomeCloud extends utils.Adapter {
   async onReady() {
     // Reset the connection indicator during startup
     this.setState("info.connection", false, true);
+    // Validate the update interval (minimum 0.5 minutes, maximum approx 24.8 days to prevent 32-bit signed int overflow)
+    const MAX_INTERVAL_MINS = 35791; // 2,147,483,647 / 60,000 ms
+    if (typeof this.config.interval !== "number") {
+      this.config.interval = parseFloat(this.config.interval) || 10;
+    }
     if (this.config.interval < 0.5) {
-      this.log.info("Set interval to minimum 0.5");
+      this.log.info("Update interval too small, setting to minimum 0.5 minutes");
       this.config.interval = 0.5;
+    } else if (this.config.interval > MAX_INTERVAL_MINS) {
+      this.log.info(`Update interval too large, limiting to maximum ${MAX_INTERVAL_MINS} minutes`);
+      this.config.interval = MAX_INTERVAL_MINS;
     }
     this.header = {
       "miot-encrypt-algorithm": "ENCRYPT-RC4",
