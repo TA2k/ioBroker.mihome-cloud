@@ -4,6 +4,9 @@
 
 name: Auto-Merge Dependabot PRs
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   # Trigger when a PR is opened or updated
   # WARNING: This needs to be run in the PR base, DO NOT build untrusted code in this action
