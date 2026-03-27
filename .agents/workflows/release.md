@@ -30,13 +30,22 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 3. **Repository-Check durchführen:**
    Der Assistent führt den `repochecker` aus, um sicherzustellen, dass keine formalen Fehler vorliegen:
    ```bash
-   npx @iobroker/repochecker TA2k/ioBroker.mihome-cloud
+   npx @iobroker/repochecker lubepi/ioBroker.mihome-cloud
    ```
    *Hinweis: Fehler `E2004` (Version noch nicht auf NPM) und Warnung `W2002` (Versions-Mismatch) können ignoriert werden, da diese erst NACH dem Release verschwinden.*
 
-4. **Changelog-Einträge formulieren** – der Assistent schlägt saubere, präzise Changelog-Sätze vor, die du bestätigst oder anpasst.
+4. **Changelog-Einträge formulieren:**
+   Der Assistent schlägt saubere, präzise Changelog-Sätze vor, die du bestätigst oder anpasst.
 
-5. **Changelog in README.md eintragen** – unter dem neuen Versions-Header, bereit für den Release-Script.
+5. **Changelog in README.md eintragen:**
+   Der Assistent trägt die Änderungen **direkt unter** dem Platzhalter `### **WORK IN PROGRESS**` ein. 
+   **WICHTIG:** Erstelle *keinen* manuellen Header mit der neuen Versionsnummer (z.B. `### 0.1.8`), da das Release-Script diesen Header selbst generiert und sonst mit einem Fehler ("Changelog is empty") abbricht.
+
+6. **Änderungen committen (WICHTIG):**
+   Bevor das Release-Script gestartet wird, muss der Assistent **alle** ausstehenden Änderungen (README.md, Workflows, .gitignore, etc.) committen und pushen. Das Release-Script prüft auf einen sauberen Git-Status und bricht bei jeder kleinsten Änderung ab.
+   ```bash
+   git add . && git commit -m "chore: preparations for vX.Y.Z" && git push
+   ```
 
 ---
 
@@ -92,3 +101,4 @@ Nach der Bestätigung läuft alles automatisch:
 - **DeepL statt ioBroker Translator:** Für bessere Übersetzungen kann `DEEPL_API_KEY` gesetzt werden.
 - **Nur Tag pushen** (bei Branch-Protection): `npm run release -- patch --tagOnly`
 - **Prerelease:** Für Alpha/Beta-Versionen `npm run release -- patch --preid alpha`
+
