@@ -548,7 +548,7 @@ class MihomeCloud extends utils.Adapter {
     // Build headers with correct API headers
     const headers = await this.buildApiHeaders();
 
-    await axios({
+    await this.requestClient({
       method: "post",
       url: `https://${this.config.region}api.io.mi.com/app${path}`,
       headers: headers,
@@ -559,6 +559,7 @@ class MihomeCloud extends utils.Adapter {
         ssecurity: this.session.ssecurity,
         _nonce: nonce,
       },
+      data: "", // Explicitly set empty POST body to match Python implementation
     })
       .then(async (res) => {
         try {
@@ -571,7 +572,7 @@ class MihomeCloud extends utils.Adapter {
           return;
         }
         if (res.data.code !== 0) {
-          this.log.error("Error getting device list");
+          this.log.error(`Error getting device list: ${res.data.message || "unknown status"}`);
           this.log.error(JSON.stringify(res.data));
           return;
         }
@@ -667,9 +668,11 @@ class MihomeCloud extends utils.Adapter {
         }
       })
       .catch((error) => {
-        this.log.error(error);
-        this.log.error(error.stack);
-        error.response && this.log.error(JSON.stringify(error.response.data));
+        if (!this.handleAuthError(error, "Get device list")) {
+          this.log.error(error);
+          this.log.debug(error.stack);
+          error.response && this.log.debug(JSON.stringify(error.response.data));
+        }
       });
   }
   async fetchPlugins() {
@@ -1583,25 +1586,17 @@ class MihomeCloud extends utils.Adapter {
             }
           })
           .catch((error) => {
-            if (error.response) {
-              if (error.response.status === 401) {
-                this.log.info("Custom properties polling received 401 error. Refresh Token in 60 seconds");
-                this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-                this.refreshTokenTimeout = setTimeout(() => {
-                  this.refreshToken();
-                }, 1000 * 60);
+            if (!this.handleAuthError(error, "Custom properties polling")) {
+              if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
+                this.log.debug(error);
                 return;
               }
+              if (error.message === "DB closed") {
+                return;
+              }
+              this.log.error(`Error polling custom properties for ${device.name}: ${error.message}`);
+              this.log.debug(error.stack);
             }
-            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
-              this.log.debug(error);
-              return;
-            }
-            if (error.message === "DB closed") {
-              return;
-            }
-            this.log.error(`Error polling custom properties for ${device.name}: ${error.message}`);
-            this.log.debug(error.stack);
           });
       } // end chunk loop
     } // end device loop
@@ -1762,25 +1757,17 @@ class MihomeCloud extends utils.Adapter {
           }
         })
         .catch((error) => {
-          if (error.response) {
-            if (error.response.status === 401) {
-              this.log.info("Vacuum status polling received 401 error. Refresh Token in 60 seconds");
-              this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-              this.refreshTokenTimeout = setTimeout(() => {
-                this.refreshToken();
-              }, 1000 * 60);
+          if (!this.handleAuthError(error, "Vacuum status polling")) {
+            if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
+              this.log.debug(error);
               return;
             }
+            if (error.message === "DB closed") {
+              return;
+            }
+            this.log.error(`Error polling vacuum status for ${device.name}: ${error.message}`);
+            this.log.debug(error.stack);
           }
-          if (error.code === "ENOTFOUND" || error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
-            this.log.debug(error);
-            return;
-          }
-          if (error.message === "DB closed") {
-            return;
-          }
-          this.log.error(`Error polling vacuum status for ${device.name}: ${error.message}`);
-          this.log.debug(error.stack);
         });
     } // end device loop
   }
@@ -1850,31 +1837,42 @@ class MihomeCloud extends utils.Adapter {
             }
           })
           .catch((error) => {
-            if (error.response) {
-              if (error.response.status === 401) {
-                error.response && this.log.debug(JSON.stringify(error.response.data));
-                this.log.info(`${url} receive 401 error. Refresh Token in 60 seconds`);
-                this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
-                this.refreshTokenTimeout = setTimeout(() => {
-                  this.refreshToken();
-                }, 1000 * 60);
-
-                return;
-              }
-
+            if (!this.handleAuthError(error, url)) {
               this.log.debug(url);
               this.log.debug(error);
               error.stack && this.log.debug(error.stack);
               error.response && this.log.debug(JSON.stringify(error.response.data));
-              return;
             }
-
-            this.log.debug(error);
-            this.log.debug(url);
-            this.log.debug(JSON.stringify(error));
           });
       }
     }
+  }
+
+  /**
+   * Central helper for handling authentication errors (401)
+   * Clears session and Jar to trigger a re-login on next start/interval
+   *
+   * @param {any} error - The error from axios
+   * @param {string} context - Context for logging
+   * @returns {boolean} true if it was a 401 error and was handled
+   */
+  handleAuthError(error, context) {
+    if (error.response && (error.response.status === 401 || error.response.status === 400)) {
+      const code = error.response.data ? error.response.data.code : "unknown";
+      const message = error.response.data ? error.response.data.message : "unknown";
+
+      this.log.error(`${context} failed with authentication error (${error.response.status}): ${message} (code ${code})`);
+      this.log.error("Clearing invalid session. A fresh login will be required.");
+
+      // Clear session data to ensure fresh login on next attempt
+      this.session = {};
+      this.cookieJar = new tough.CookieJar();
+      this.saveCookies(); // Clear the saved state in adapter context
+
+      this.setState("info.connection", false, true);
+      return true;
+    }
+    return false;
   }
 
   async refreshToken() {
@@ -1995,30 +1993,21 @@ class MihomeCloud extends utils.Adapter {
         this.log.info(`Session test failed with code: ${result.code} - fresh login required`);
         return false;
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          this.log.info("Session expired (401 error) - fresh login required");
-          // Clear session only on authentication errors
-          this.session = {};
-          this.cookieJar = new tough.CookieJar();
-        } else if (error.response && error.response.status === 400) {
-          this.log.info("Session invalid (400 error - invalid signature) - fresh login required");
-          // Clear session only on authentication errors
-          this.session = {};
-          this.cookieJar = new tough.CookieJar();
-        } else if (
-          !error.response &&
-          (error.code === "EBUSY" || error.code === "ETIMEDOUT" || error.code === "ENOTFOUND" || error.code === "ECONNREFUSED")
-        ) {
-          // Network connectivity issues - keep session and try again later
-          this.log.warn(
-            `Network connectivity issue during session validation (${error.code}: ${error.message}) - keeping session and will retry`,
-          );
-          return false; // Session validation failed due to network, but don't clear credentials
-        } else {
-          this.log.debug(`Session test failed: ${error.message}`);
-          // For unknown errors, clear session to prevent issues
-          this.session = {};
-          this.cookieJar = new tough.CookieJar();
+        if (!this.handleAuthError(error, "Session validation")) {
+          if (
+            !error.response &&
+            (error.code === "EBUSY" || error.code === "ETIMEDOUT" || error.code === "ENOTFOUND" || error.code === "ECONNREFUSED")
+          ) {
+            // Network connectivity issues - keep session and try again later
+            this.log.warn(
+              `Network connectivity issue during session validation (${error.code}: ${error.message}) - keeping session and will retry`,
+            );
+          } else {
+            this.log.debug(`Session test failed: ${error.message}`);
+            // For unknown errors, clear session to prevent issues
+            this.session = {};
+            this.cookieJar = new tough.CookieJar();
+          }
         }
         return false;
       }
