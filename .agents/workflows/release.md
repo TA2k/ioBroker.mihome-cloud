@@ -102,3 +102,4 @@ Nach der Bestätigung läuft alles automatisch:
 - **Nur Tag pushen** (bei Branch-Protection): `npm run release -- patch --tagOnly`
 - **Prerelease:** Für Alpha/Beta-Versionen `npm run release -- patch --preid alpha`
 
+
