@@ -115,7 +115,7 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 1.0.5 (2026-04-01)
 - (fix) improve 401 authentication error handling and session reset
 - (fix) validate and limit user configurable update interval
 - (fix) update dependencies to address vulnerabilities

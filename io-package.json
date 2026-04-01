@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "mihome-cloud",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "news": {
+      "1.0.5": {
+        "en": "improve 401 authentication error handling and session reset\nvalidate and limit user configurable update interval\nupdate dependencies to address vulnerabilities",
+        "de": "401 authentifizierungsfehlerbehandlung und session-reset verbessern\nvalidieren und begrenzen sie das konfigurierbare updateintervall des benutzers\ndie abhängigkeiten zu aktualisieren, um schwachstellen zu beheben",
+        "ru": "улучшение 401 обработки ошибок аутентификации и сброс сеанса\nпроверять и ограничивать настраиваемый пользователем интервал обновления\nобновление зависимостей для устранения уязвимостей",
+        "pt": "melhorar o tratamento de erros de autenticação 401 e repor a sessão\nvalidar e limitar o intervalo de atualização configurável pelo usuário\natualizar dependências para resolver vulnerabilidades",
+        "nl": "het verbeteren van 401 authenticatiefoutafhandeling en sessieherstel\nvalideren en beperken van gebruikers configureerbare update-interval\nafhankelijkheden bijwerken om kwetsbaarheden aan te pakken",
+        "fr": "améliorer le traitement des erreurs d'authentification 401 et réinitialiser la session\nvalider et limiter l'intervalle de mise à jour configurable de l'utilisateur\nmettre à jour les dépendances pour remédier aux vulnérabilités",
+        "it": "migliorare la gestione degli errori di autenticazione 401 e il ripristino della sessione\nconvalidare e limitare l'intervallo di aggiornamento configurabile dell'utente\naggiornare le dipendenze per affrontare le vulnerabilità",
+        "es": "mejorar 401 tratamiento de errores de autenticación y reiniciar sesión\nvalidar y limitar el intervalo de actualización configurable del usuario\nactualizar las dependencias para hacer frente a las vulnerabilidades",
+        "pl": "ulepszenie obsługi błędów uwierzytelniania 401 i resetowania sesji\nwalidacja i ograniczenie konfigurowalnego okresu aktualizacji użytkownika\naktualizacja zależności w celu usunięcia słabych punktów",
+        "uk": "поліпшення 401 автентифікації помилок обробки та скидання сеансів\nвалідувати і обмежити інтервал налаштування користувачів\nоновлення залежності для адреси вразливостей",
+        "zh-cn": "改进401 认证错误处理和会话重设\n验证和限制用户可配置的更新间隔\n更新解决脆弱性的依赖性"
+      },
       "1.0.4": {
         "en": "Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance",
         "de": "Wartungsupdate: Konsolidierte Changelog- und Fix-Repository-Metadaten für bessere Standards Compliance",
