@@ -1,0 +1,151 @@
+name: Check ioBroker Copilot Template Version
+
+on:
+  schedule:
+    - cron: "23 3 * * 0"
+  workflow_dispatch:
+
+jobs:
+  check-template:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine local and latest template version
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -f .github/copilot-instructions.md ]]; then
+            current_version=$(grep -Eo "\*\*Version:\*\*\s*[0-9]+\.[0-9]+\.[0-9]+" .github/copilot-instructions.md | head -n1 | grep -Eo "[0-9]+\.[0-9]+\.[0-9]+" || true)
+            if [[ -z "${current_version}" ]]; then
+              current_version="unknown"
+            fi
+          else
+            current_version="none"
+          fi
+
+          latest_version=$(curl -fsSL https://raw.githubusercontent.com/DrozmotiX/ioBroker-Copilot-Instructions/main/config/metadata.json | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{const j=JSON.parse(s);process.stdout.write(j.version||"unknown");}catch{process.stdout.write("unknown");}})')
+
+          setup_needed="false"
+          update_needed="false"
+
+          if [[ "${current_version}" == "none" ]]; then
+            setup_needed="true"
+          elif [[ "${current_version}" != "unknown" && "${latest_version}" != "unknown" && "${current_version}" != "${latest_version}" ]]; then
+            update_needed="true"
+          fi
+
+          echo "current_version=${current_version}" >> "$GITHUB_OUTPUT"
+          echo "latest_version=${latest_version}" >> "$GITHUB_OUTPUT"
+          echo "setup_needed=${setup_needed}" >> "$GITHUB_OUTPUT"
+          echo "update_needed=${update_needed}" >> "$GITHUB_OUTPUT"
+
+      - name: Create setup issue if needed
+        if: steps.versions.outputs.setup_needed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🤖 Setup ioBroker GitHub Copilot Instructions';
+            const { owner, repo } = context.repo;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              labels: 'copilot-setup'
+            });
+
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              core.info(`Setup issue already exists: #${existing.number}`);
+              return;
+            }
+
+            const body = [
+              '# Automated ioBroker Copilot Instructions Setup',
+              '',
+              'Please set up or validate `.github/copilot-instructions.md` using:',
+              '- Template: https://raw.githubusercontent.com/DrozmotiX/ioBroker-Copilot-Instructions/main/template.md',
+              '- Setup guide: https://raw.githubusercontent.com/DrozmotiX/ioBroker-Copilot-Instructions/main/templates/initial-setup-automation.md',
+              '',
+              `Detected latest template version: ${process.env.LATEST_VERSION}`,
+              '',
+              'Requirements:',
+              '1. Keep adapter-specific sections intact',
+              '2. Use current best practices from the template',
+              '3. Keep `**Version:**` and template source updated'
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['copilot-setup', 'automation']
+            });
+        env:
+          LATEST_VERSION: ${{ steps.versions.outputs.latest_version }}
+
+      - name: Create update issue if needed
+        if: steps.versions.outputs.update_needed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🤖 Update ioBroker Copilot Instructions Template';
+            const { owner, repo } = context.repo;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              labels: 'template-update'
+            });
+
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              core.info(`Update issue already exists: #${existing.number}`);
+              return;
+            }
+
+            const body = [
+              '# Automated ioBroker Copilot Template Update Request',
+              '',
+              `Current version: ${process.env.CURRENT_VERSION}`,
+              `Latest version: ${process.env.LATEST_VERSION}`,
+              '',
+              'Please merge the newest template into `.github/copilot-instructions.md` while preserving project-specific guidance.',
+              '',
+              'References:',
+              '- Template: https://raw.githubusercontent.com/DrozmotiX/ioBroker-Copilot-Instructions/main/template.md',
+              '- Update workflow: https://raw.githubusercontent.com/DrozmotiX/ioBroker-Copilot-Instructions/main/templates/automated-template-update.md',
+              '',
+              'Requirements:',
+              '1. Keep all adapter-specific instructions',
+              '2. Remove duplicate content in custom sections',
+              `3. Update version to ${process.env.LATEST_VERSION}`
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['template-update', 'automation']
+            });
+        env:
+          CURRENT_VERSION: ${{ steps.versions.outputs.current_version }}
+          LATEST_VERSION: ${{ steps.versions.outputs.latest_version }}
+
+      - name: Summary
+        run: |
+          echo "Current version: ${{ steps.versions.outputs.current_version }}"
+          echo "Latest version:  ${{ steps.versions.outputs.latest_version }}"
+          echo "Setup needed:    ${{ steps.versions.outputs.setup_needed }}"
+          echo "Update needed:   ${{ steps.versions.outputs.update_needed }}"
