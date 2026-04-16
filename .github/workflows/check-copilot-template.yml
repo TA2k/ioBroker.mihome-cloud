@@ -49,7 +49,7 @@ jobs:
 
       - name: Create setup issue if needed
         if: steps.versions.outputs.setup_needed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = '🤖 Setup ioBroker GitHub Copilot Instructions';
@@ -95,7 +95,7 @@ jobs:
 
       - name: Create update issue if needed
         if: steps.versions.outputs.update_needed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = '🤖 Update ioBroker Copilot Instructions Template';
