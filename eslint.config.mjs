@@ -22,7 +22,11 @@ export default [
       "no-var": "error",
       "no-trailing-spaces": "error",
       "prefer-const": "error",
-      quotes: ["error", "double", { avoidEscape: true, allowTemplateLiterals: true }],
+      quotes: [
+        "error",
+        "double",
+        { avoidEscape: true, allowTemplateLiterals: true },
+      ],
       semi: ["error", "always"],
       "jsdoc/require-jsdoc": "off",
       "jsdoc/require-param-description": "off",
