@@ -135,7 +135,6 @@ class MihomeCloud extends utils.Adapter {
     this.subscribeStates("*");
     await this.ensureAuthStates();
     await this.updateAuthRuntime("starting", {
-      reauthNeeded: false,
       loginUrl: "",
       attemptCount: 0,
       nextLoginAttempt: 0,
@@ -189,9 +188,7 @@ class MihomeCloud extends utils.Adapter {
                 "Session resumption failed due to network error - will retry at next update interval",
               );
               this.setState("info.connection", false, true);
-              await this.updateAuthRuntime("network_error", {
-                reauthNeeded: false,
-              });
+              await this.updateAuthRuntime("network_error");
               // Don't call login() - adapter will retry validation on next update cycle
             }
           }
@@ -289,18 +286,6 @@ class MihomeCloud extends utils.Adapter {
       native: {},
     });
 
-    await this.extendObject("auth.reauthNeeded", {
-      type: "state",
-      common: {
-        name: "Re-authentication Required",
-        type: "boolean",
-        role: "indicator",
-        read: true,
-        write: false,
-      },
-      native: {},
-    });
-
     await this.extendObject("auth.loginUrl", {
       type: "state",
       common: {
@@ -342,13 +327,6 @@ class MihomeCloud extends utils.Adapter {
     try {
       if (status !== undefined) {
         await this.setStateAsync("auth.status", status, true);
-      }
-      if (options.reauthNeeded !== undefined) {
-        await this.setStateAsync(
-          "auth.reauthNeeded",
-          options.reauthNeeded,
-          true,
-        );
       }
       if (options.loginUrl !== undefined) {
         await this.setStateAsync("auth.loginUrl", options.loginUrl, true);
@@ -401,7 +379,6 @@ class MihomeCloud extends utils.Adapter {
     );
 
     this.updateAuthRuntime("cooldown_wait", {
-      reauthNeeded: true,
       nextLoginAttempt: dueAt,
       attemptCount: this.reauthAttemptCount,
     });
@@ -438,7 +415,6 @@ class MihomeCloud extends utils.Adapter {
     this.lastLoginAttemptTs = now;
 
     await this.updateAuthRuntime("qr_login_running", {
-      reauthNeeded: true,
       attemptCount: this.reauthAttemptCount,
       nextLoginAttempt: 0,
     });
@@ -453,7 +429,6 @@ class MihomeCloud extends utils.Adapter {
     if (success) {
       this.reauthAttemptCount = 0;
       await this.updateAuthRuntime("connected", {
-        reauthNeeded: false,
         loginUrl: "",
         attemptCount: 0,
         nextLoginAttempt: 0,
@@ -463,7 +438,6 @@ class MihomeCloud extends utils.Adapter {
       this.reauthAttemptCount += 1;
       const nextAttemptAt = Date.now() + this.reauthCooldownMs;
       await this.updateAuthRuntime("reauth_required", {
-        reauthNeeded: true,
         attemptCount: this.reauthAttemptCount,
         nextLoginAttempt: nextAttemptAt,
       });
@@ -486,9 +460,7 @@ class MihomeCloud extends utils.Adapter {
     // Clear any old session data to ensure fresh login
     this.session = {};
 
-    await this.updateAuthRuntime("qr_login_starting", {
-      reauthNeeded: true,
-    });
+    await this.updateAuthRuntime("qr_login_starting");
 
     // Step 1: Get QR code URL
     if (!(await this.qrLoginStep1())) {
@@ -571,7 +543,6 @@ class MihomeCloud extends utils.Adapter {
           this.session.longPollingUrl = data.lp;
           this.session.timeout = data.timeout;
           await this.updateAuthRuntime("qr_login_pending", {
-            reauthNeeded: true,
             loginUrl: data.loginUrl,
           });
           this.log.debug("QR code URLs extracted successfully");
@@ -615,7 +586,6 @@ class MihomeCloud extends utils.Adapter {
 
       if (response.status === 200) {
         await this.updateAuthRuntime("qr_login_pending", {
-          reauthNeeded: true,
           loginUrl: this.session.loginUrl || "",
         });
         this.log.warn(
@@ -654,9 +624,7 @@ class MihomeCloud extends utils.Adapter {
       const elapsed = Date.now() - startTime;
       if (elapsed > timeoutMs) {
         this.log.error(`QR code login timeout after ${elapsed / 1000} seconds`);
-        await this.updateAuthRuntime("reauth_required", {
-          reauthNeeded: true,
-        });
+        await this.updateAuthRuntime("reauth_required");
         return false;
       }
 
@@ -842,7 +810,6 @@ class MihomeCloud extends utils.Adapter {
         // Set connection state
         this.setState("info.connection", true, true);
         await this.updateAuthRuntime("connected", {
-          reauthNeeded: false,
           loginUrl: "",
         });
 
@@ -2466,9 +2433,7 @@ class MihomeCloud extends utils.Adapter {
       this.saveCookies(); // Clear the saved state in adapter context
 
       this.setState("info.connection", false, true);
-      this.updateAuthRuntime("reauth_required", {
-        reauthNeeded: true,
-      });
+      this.updateAuthRuntime("reauth_required");
       this.scheduleReauthAttempt(`auth-error:${context}`);
       return true;
     }
