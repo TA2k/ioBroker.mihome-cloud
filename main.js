@@ -75,6 +75,7 @@ class MihomeCloud extends utils.Adapter {
     this.reauthAttemptCount = 0;
     this.lastLoginAttemptTs = 0;
     this.reauthCooldownMs = this.DEFAULT_REAUTH_COOLDOWN_MINS * 60 * 1000;
+    this.unloaded = false;
   }
 
   /**
@@ -225,49 +226,62 @@ class MihomeCloud extends utils.Adapter {
     // The interval will handle reconnection attempts
     this.updateInterval = setInterval(
       async () => {
-        if (!this.session.ssecurity) {
-          if (this.reauthCooldownMs === 0) {
-            await this.updateAuthRuntime("reauth_required");
-            return;
-          }
-          await this.performReauth("polling-no-session");
-          return;
-        }
-
-        // If we have session credentials but connection is false, try to re-validate session
-        const connectionState = await this.getStateAsync("info.connection");
-        if (this.session.ssecurity && connectionState && !connectionState.val) {
-          this.log.info(
-            "Connection lost - attempting to re-validate session...",
-          );
-          const sessionResumed = await this.resumeSession();
-          if (sessionResumed) {
-            this.log.info(
-              "Session re-validated successfully, resuming updates",
-            );
-          } else if (!this.session.ssecurity) {
-            // Session was cleared due to authentication error
-            this.log.warn(
-              "Session validation failed, attempting fresh login...",
-            );
+        if (this.unloaded) return;
+        try {
+          if (!this.session.ssecurity) {
             if (this.reauthCooldownMs === 0) {
               await this.updateAuthRuntime("reauth_required");
               return;
             }
-            await this.performReauth("polling-session-validation-failed");
-            return;
-          } else {
-            // Network error persists - skip this update cycle
-            this.log.debug("Network error persists, skipping update cycle");
+            await this.performReauth("polling-no-session");
             return;
           }
-        }
 
-        // Only poll if we have a valid session
-        if (this.session.ssecurity) {
-          await this.updateDevicesViaSpec();
-          await this.updateCustomStates();
-          await this.updateVacuumStatus();
+          // If we have session credentials but connection is false, try to re-validate session
+          if (this.unloaded) return;
+          const connectionState = await this.getStateAsync("info.connection");
+          if (
+            this.session.ssecurity &&
+            connectionState &&
+            !connectionState.val
+          ) {
+            this.log.info(
+              "Connection lost - attempting to re-validate session...",
+            );
+            const sessionResumed = await this.resumeSession();
+            if (sessionResumed) {
+              this.log.info(
+                "Session re-validated successfully, resuming updates",
+              );
+            } else if (!this.session.ssecurity) {
+              // Session was cleared due to authentication error
+              this.log.warn(
+                "Session validation failed, attempting fresh login...",
+              );
+              if (this.reauthCooldownMs === 0) {
+                await this.updateAuthRuntime("reauth_required");
+                return;
+              }
+              await this.performReauth("polling-session-validation-failed");
+              return;
+            } else {
+              // Network error persists - skip this update cycle
+              this.log.debug("Network error persists, skipping update cycle");
+              return;
+            }
+          }
+
+          // Only poll if we have a valid session
+          if (this.session.ssecurity && !this.unloaded) {
+            await this.updateDevicesViaSpec();
+            await this.updateCustomStates();
+            await this.updateVacuumStatus();
+          }
+        } catch (error) {
+          if (error.message === "DB closed" || error.message.includes("closed"))
+            return;
+          this.log.error(`Error in polling interval: ${error.message}`);
+          this.log.debug(error.stack);
         }
       },
       this.config.interval * 60 * 1000,
@@ -614,6 +628,7 @@ class MihomeCloud extends utils.Adapter {
     // Start long polling
 
     while (true) {
+      if (this.unloaded) return false;
       // Check if overall timeout exceeded BEFORE making request
       const elapsed = Date.now() - startTime;
       if (elapsed > timeoutMs) {
@@ -2702,6 +2717,7 @@ class MihomeCloud extends utils.Adapter {
    */
   async loadCookies() {
     try {
+      if (this.unloaded) return false;
       const state = await this.getStateAsync(this.cookieStateId);
       if (!state || !state.val) {
         this.log.debug("No saved cookies found");
@@ -2787,15 +2803,18 @@ class MihomeCloud extends utils.Adapter {
    *
    * @param {() => void} callback
    */
-  onUnload(callback) {
+  async onUnload(callback) {
+    this.unloaded = true;
     try {
-      this.setState("info.connection", false, true);
       this.refreshTimeout && clearTimeout(this.refreshTimeout);
       this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
       this.updateInterval && clearInterval(this.updateInterval);
       this.reauthTimer && clearTimeout(this.reauthTimer);
       this.reauthTimer = null;
       this.reauthScheduledAt = 0;
+
+      await this.setStateAsync("info.connection", false, true);
+
       callback();
     } catch (e) {
       callback();
@@ -2809,6 +2828,7 @@ class MihomeCloud extends utils.Adapter {
    * @param {ioBroker.State | null | undefined} state
    */
   async onStateChange(id, state) {
+    if (this.unloaded) return;
     if (state) {
       if (!state.ack) {
         const deviceId = id.split(".")[2];

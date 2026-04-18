@@ -126,7 +126,7 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 
 ## Troubleshooting
 
-- **"DB closed" errors**: Harmless – occurs when the adapter is stopping while a request is still pending. These are suppressed automatically.
+- **"DB closed" warnings**: Harmless – these are now proactively prevented during adapter shutdown by a clean termination flag.
 - **"ECONNRESET" errors**: Temporary network interruptions to the Xiaomi Cloud. The adapter retries automatically at the next polling interval.
 - **"-106 device network unreachable"**: The device (e.g., a vacuum cleaner) is currently offline, disconnected from Wi-Fi, or powered off. The adapter will log this as debug and keep trying.
 - **401/400 authentication errors**: The adapter clears the invalid session and enters re-authentication mode. A new login URL is provided via log warning and `auth.loginUrl` if automatic login attempts are enabled.
@@ -142,6 +142,7 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 - (lubepi) **ENHANCED**: Added configurable login cooldown with optional disable mode (`0`) for automatic login attempts
 - (lubepi) **ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` for automation and easier re-authentication handling
 - (lubepi) **ENHANCED**: Updated README sections for configuration, login flow, object tree, troubleshooting, and requirements alignment
+- (lubepi) **FIXED**: Suppress "DB closed" warnings during adapter shutdown and restart by implementing a clean shutdown flag
 
 ### 1.0.5 (2026-04-01)
 - (lubepi) improve 401 authentication error handling and session reset
