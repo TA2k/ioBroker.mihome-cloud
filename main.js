@@ -2743,10 +2743,9 @@ class MihomeCloud extends utils.Adapter {
 
       if (accountChanged) {
         // Account changed: Delete devices AND invalidate session (need fresh login)
-        this.log.warn("Account changed!");
-        this.log.warn(`  Old userId: ${cookieData.userId}`);
-        this.log.warn(`  New userId: ${this.session.userId}`);
-        this.log.warn("  Deleting all old device objects...");
+        this.log.warn(
+          `Account changed! Old: ${cookieData.userId}, New: ${this.session.userId}. Deleting all old device objects...`,
+        );
         await this.deleteAllDevices();
         this.log.warn("  Clearing old session and performing fresh login...");
         return false;
