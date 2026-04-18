@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Login Guide: After saving and starting the adapter, a login URL will appear in the adapter log. Open this URL in your browser to log in with your Xiaomi account. The adapter will then automatically connect.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Minimum time between automatic QR login attempts after an expired or failed session.",
+    "qr_login_cooldown__in_minutes_": "QR login cooldown (in minutes)",
     "region": "Region",
     "update_interval__in_minutes_": "Update interval (in minutes)"
 }

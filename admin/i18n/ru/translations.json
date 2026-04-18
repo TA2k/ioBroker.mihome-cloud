@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Как войти: После сохранения настроек и запуска адаптера в журнале адаптера появится URL для входа. Откройте этот URL в браузере и войдите в свою учетную запись Xiaomi. Адаптер подключится автоматически.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Минимальный интервал между автоматическими попытками QR-входа после истекшей или неудачной сессии.",
+    "qr_login_cooldown__in_minutes_": "Пауза между QR-входами (в минутах)",
     "region": "Регион",
     "update_interval__in_minutes_": "Интервал обновления (в минутах)"
 }

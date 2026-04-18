@@ -1,3 +1,5 @@
 {
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Мінімальний інтервал між автоматичними спробами QR-входу після простроченої або невдалої сесії.",
+    "qr_login_cooldown__in_minutes_": "Пауза між QR-входами (у хвилинах)",
     "region": "Регіон"
 }

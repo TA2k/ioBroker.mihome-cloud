@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Comment se connecter : Après avoir enregistré les paramètres et démarré l'adaptateur, une URL de connexion apparaîtra dans le journal de l'adaptateur. Ouvrez cette URL dans votre navigateur et connectez-vous avec votre compte Xiaomi. L'adaptateur se connectera alors automatiquement.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Délai minimal entre les tentatives automatiques de connexion QR après une session expirée ou échouée.",
+    "qr_login_cooldown__in_minutes_": "Délai de relance QR (en minutes)",
     "region": "Région",
     "update_interval__in_minutes_": "Intervalle de mise à jour (en minutes)"
 }

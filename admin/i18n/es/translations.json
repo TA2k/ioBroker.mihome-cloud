@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Cómo iniciar sesión: Después de guardar la configuración e iniciar el adaptador, aparecerá una URL de inicio de sesión en el registro del adaptador. Abra esta URL en su navegador e inicie sesión con su cuenta Xiaomi. El adaptador se conectará automáticamente.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Tiempo mínimo entre intentos automáticos de inicio de sesión por QR después de una sesión caducada o fallida.",
+    "qr_login_cooldown__in_minutes_": "Enfriamiento del inicio de sesión QR (en minutos)",
     "region": "Región",
     "update_interval__in_minutes_": "Intervalo de actualización (en minutos)"
 }

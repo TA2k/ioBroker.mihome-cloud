@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Como fazer login: Após salvar as configurações e iniciar o adaptador, um URL de login aparecerá no log do adaptador. Abra este URL no navegador e faça login com sua conta Xiaomi. O adaptador se conectará automaticamente.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Tempo mínimo entre tentativas automáticas de login por QR após uma sessão expirada ou com falha.",
+    "qr_login_cooldown__in_minutes_": "Intervalo de espera do login QR (em minutos)",
     "region": "Região",
     "update_interval__in_minutes_": "Intervalo de atualização (em minutos)"
 }

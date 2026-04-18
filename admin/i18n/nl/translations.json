@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Inloggen: Na het opslaan van de instellingen en het starten van de adapter verschijnt er een inlog-URL in het adapter-logboek. Open deze URL in uw browser en log in met uw Xiaomi-account. De adapter maakt dan automatisch verbinding.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Minimale tijd tussen automatische QR-loginpogingen na een verlopen of mislukte sessie.",
+    "qr_login_cooldown__in_minutes_": "QR-login afkoeltijd (in minuten)",
     "region": "Region",
     "update_interval__in_minutes_": "Update-interval (in minuten)"
 }

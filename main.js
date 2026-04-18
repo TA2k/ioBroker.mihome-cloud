@@ -34,6 +34,7 @@ class MihomeCloud extends utils.Adapter {
     this.QR_CODE_TIMEOUT = 300; // QR code valid for 5 minutes (seconds)
     this.LONG_POLL_TIMEOUT = 10000; // Long polling timeout per request (ms)
     this.EVENT_AUTO_RESET_DELAY = 5000; // Auto-reset events after 5 seconds
+    this.DEFAULT_REAUTH_COOLDOWN_MINS = 5; // Minimum time between QR login starts
 
     // Device tracking
     this.deviceArray = [];
@@ -66,6 +67,14 @@ class MihomeCloud extends utils.Adapter {
 
     // Cookie and session persistence via ioBroker state
     this.cookieStateId = "auth.session";
+
+    // Re-authentication scheduler state
+    this.reauthTimer = null;
+    this.reauthScheduledAt = 0;
+    this.loginInProgress = false;
+    this.reauthAttemptCount = 0;
+    this.lastLoginAttemptTs = 0;
+    this.reauthCooldownMs = this.DEFAULT_REAUTH_COOLDOWN_MINS * 60 * 1000;
   }
 
   /**
@@ -90,6 +99,22 @@ class MihomeCloud extends utils.Adapter {
       );
       this.config.interval = MAX_INTERVAL_MINS;
     }
+
+    if (typeof this.config.reauthCooldownMins !== "number") {
+      this.config.reauthCooldownMins =
+        parseFloat(this.config.reauthCooldownMins) ||
+        this.DEFAULT_REAUTH_COOLDOWN_MINS;
+    }
+    if (this.config.reauthCooldownMins < 1) {
+      this.log.info("Re-auth cooldown too small, setting to minimum 1 minute");
+      this.config.reauthCooldownMins = 1;
+    } else if (this.config.reauthCooldownMins > 1440) {
+      this.log.info(
+        "Re-auth cooldown too large, limiting to maximum 1440 minutes",
+      );
+      this.config.reauthCooldownMins = 1440;
+    }
+    this.reauthCooldownMs = this.config.reauthCooldownMins * 60 * 1000;
     this.header = {
       "miot-encrypt-algorithm": "ENCRYPT-RC4",
       "content-type": "application/x-www-form-urlencoded",
@@ -108,6 +133,13 @@ class MihomeCloud extends utils.Adapter {
     this.session = {};
 
     this.subscribeStates("*");
+    await this.ensureAuthStates();
+    await this.updateAuthRuntime("starting", {
+      reauthNeeded: false,
+      loginUrl: "",
+      attemptCount: 0,
+      nextLoginAttempt: 0,
+    });
 
     // Try to load saved cookies first
     this.log.info("Attempting to load saved cookies...");
@@ -136,7 +168,7 @@ class MihomeCloud extends utils.Adapter {
           this.session = {};
           this.cookieJar = new tough.CookieJar(); // Clear all cookies
           await this.saveCookies(); // Clear the saved state
-          await this.login();
+          await this.performReauth("startup-corrupted-session", true);
         } else {
           // ssecurity looks valid - try to resume session
           const sessionResumed = await this.resumeSession();
@@ -150,13 +182,16 @@ class MihomeCloud extends utils.Adapter {
               this.session = {};
               this.cookieJar = new tough.CookieJar(); // Clear all cookies
               await this.saveCookies(); // Clear the saved state
-              await this.login();
+              await this.performReauth("startup-auth-error", true);
             } else {
               // Session was kept (network error) - skip device updates and try again next interval
               this.log.warn(
                 "Session resumption failed due to network error - will retry at next update interval",
               );
               this.setState("info.connection", false, true);
+              await this.updateAuthRuntime("network_error", {
+                reauthNeeded: false,
+              });
               // Don't call login() - adapter will retry validation on next update cycle
             }
           }
@@ -169,7 +204,7 @@ class MihomeCloud extends utils.Adapter {
         this.session = {};
         this.cookieJar = new tough.CookieJar(); // Clear all cookies
         await this.saveCookies(); // Clear the saved state
-        await this.login();
+        await this.performReauth("startup-no-session", true);
       }
     } else {
       this.log.info(
@@ -177,7 +212,7 @@ class MihomeCloud extends utils.Adapter {
       );
       this.session = {};
       this.cookieJar = new tough.CookieJar(); // Clear all cookies
-      await this.login();
+      await this.performReauth("startup-no-cookies", true);
     }
 
     // Initial device fetch if we have a valid session
@@ -192,6 +227,11 @@ class MihomeCloud extends utils.Adapter {
     // The interval will handle reconnection attempts
     this.updateInterval = setInterval(
       async () => {
+        if (!this.session.ssecurity) {
+          await this.performReauth("polling-no-session");
+          return;
+        }
+
         // If we have session credentials but connection is false, try to re-validate session
         const connectionState = await this.getStateAsync("info.connection");
         if (this.session.ssecurity && connectionState && !connectionState.val) {
@@ -208,7 +248,8 @@ class MihomeCloud extends utils.Adapter {
             this.log.warn(
               "Session validation failed, attempting fresh login...",
             );
-            await this.login();
+            await this.performReauth("polling-session-validation-failed");
+            return;
           } else {
             // Network error persists - skip this update cycle
             this.log.debug("Network error persists, skipping update cycle");
@@ -225,10 +266,217 @@ class MihomeCloud extends utils.Adapter {
       },
       this.config.interval * 60 * 1000,
     );
-    // Note: Automatic token refresh disabled - with manual QR-code login,
-    // the session remains valid indefinitely (until server-side invalidation).
-    // No need for periodic re-authentication.
   }
+
+  async ensureAuthStates() {
+    await this.setObjectNotExistsAsync("auth", {
+      type: "channel",
+      common: {
+        name: "Authentication Data",
+      },
+      native: {},
+    });
+
+    await this.extendObject("auth.status", {
+      type: "state",
+      common: {
+        name: "Authentication Status",
+        type: "string",
+        role: "text",
+        read: true,
+        write: false,
+      },
+      native: {},
+    });
+
+    await this.extendObject("auth.reauthNeeded", {
+      type: "state",
+      common: {
+        name: "Re-authentication Required",
+        type: "boolean",
+        role: "indicator",
+        read: true,
+        write: false,
+      },
+      native: {},
+    });
+
+    await this.extendObject("auth.loginUrl", {
+      type: "state",
+      common: {
+        name: "Current Xiaomi Login URL",
+        type: "string",
+        role: "text.url",
+        read: true,
+        write: false,
+      },
+      native: {},
+    });
+
+    await this.extendObject("auth.nextLoginAttempt", {
+      type: "state",
+      common: {
+        name: "Next Scheduled Login Attempt (unix ms)",
+        type: "number",
+        role: "value.time",
+        read: true,
+        write: false,
+      },
+      native: {},
+    });
+
+    await this.extendObject("auth.reauthAttempts", {
+      type: "state",
+      common: {
+        name: "Consecutive Re-authentication Attempts",
+        type: "number",
+        role: "value",
+        read: true,
+        write: false,
+      },
+      native: {},
+    });
+  }
+
+  async updateAuthRuntime(status, options = {}) {
+    try {
+      if (status !== undefined) {
+        await this.setStateAsync("auth.status", status, true);
+      }
+      if (options.reauthNeeded !== undefined) {
+        await this.setStateAsync(
+          "auth.reauthNeeded",
+          options.reauthNeeded,
+          true,
+        );
+      }
+      if (options.loginUrl !== undefined) {
+        await this.setStateAsync("auth.loginUrl", options.loginUrl, true);
+      }
+      if (options.nextLoginAttempt !== undefined) {
+        await this.setStateAsync(
+          "auth.nextLoginAttempt",
+          options.nextLoginAttempt,
+          true,
+        );
+      }
+      if (options.attemptCount !== undefined) {
+        await this.setStateAsync(
+          "auth.reauthAttempts",
+          options.attemptCount,
+          true,
+        );
+      }
+    } catch (error) {
+      this.log.debug(`Failed to update auth runtime states: ${error.message}`);
+    }
+  }
+
+  scheduleReauthAttempt(reason, forceImmediate = false) {
+    if (this.loginInProgress) {
+      return;
+    }
+
+    const now = Date.now();
+    const cooldownUntil = this.lastLoginAttemptTs + this.reauthCooldownMs;
+    const dueAt = forceImmediate ? now : Math.max(now, cooldownUntil);
+
+    if (
+      this.reauthTimer &&
+      this.reauthScheduledAt &&
+      this.reauthScheduledAt <= dueAt
+    ) {
+      return;
+    }
+
+    if (this.reauthTimer) {
+      clearTimeout(this.reauthTimer);
+      this.reauthTimer = null;
+    }
+
+    this.reauthScheduledAt = dueAt;
+    const delay = Math.max(0, dueAt - now);
+    this.log.warn(
+      `Next QR login attempt scheduled in ${Math.ceil(delay / 1000)}s (${reason})`,
+    );
+
+    this.updateAuthRuntime("cooldown_wait", {
+      reauthNeeded: true,
+      nextLoginAttempt: dueAt,
+      attemptCount: this.reauthAttemptCount,
+    });
+
+    this.reauthTimer = setTimeout(() => {
+      this.reauthTimer = null;
+      this.reauthScheduledAt = 0;
+      this.performReauth(`scheduled:${reason}`).catch((error) => {
+        this.log.error(`Scheduled re-authentication failed: ${error.message}`);
+      });
+    }, delay);
+  }
+
+  async performReauth(reason, forceImmediate = false) {
+    if (this.loginInProgress) {
+      this.log.debug(`Re-authentication already in progress (${reason})`);
+      return false;
+    }
+
+    const now = Date.now();
+    const cooldownUntil = this.lastLoginAttemptTs + this.reauthCooldownMs;
+    if (!forceImmediate && now < cooldownUntil) {
+      this.scheduleReauthAttempt(reason);
+      return false;
+    }
+
+    if (this.reauthTimer) {
+      clearTimeout(this.reauthTimer);
+      this.reauthTimer = null;
+      this.reauthScheduledAt = 0;
+    }
+
+    this.loginInProgress = true;
+    this.lastLoginAttemptTs = now;
+
+    await this.updateAuthRuntime("qr_login_running", {
+      reauthNeeded: true,
+      attemptCount: this.reauthAttemptCount,
+      nextLoginAttempt: 0,
+    });
+
+    let success = false;
+    try {
+      success = await this.login();
+    } catch (error) {
+      this.log.error(`Re-authentication error: ${error.message}`);
+    }
+
+    if (success) {
+      this.reauthAttemptCount = 0;
+      await this.updateAuthRuntime("connected", {
+        reauthNeeded: false,
+        loginUrl: "",
+        attemptCount: 0,
+        nextLoginAttempt: 0,
+      });
+      this.log.info(`Re-authentication succeeded (${reason})`);
+    } else {
+      this.reauthAttemptCount += 1;
+      const nextAttemptAt = Date.now() + this.reauthCooldownMs;
+      await this.updateAuthRuntime("reauth_required", {
+        reauthNeeded: true,
+        attemptCount: this.reauthAttemptCount,
+        nextLoginAttempt: nextAttemptAt,
+      });
+      this.log.warn(
+        `Re-authentication failed (${reason}), next try in ${Math.ceil(this.reauthCooldownMs / 1000)}s`,
+      );
+      this.scheduleReauthAttempt("failed-login");
+    }
+
+    this.loginInProgress = false;
+    return success;
+  }
+
   async login() {
     // QR-Code Login: Uses Xiaomi's long-polling QR code flow
     // Step 1: Get QR code URL, Step 2: Display login URL to user,
@@ -237,6 +485,10 @@ class MihomeCloud extends utils.Adapter {
 
     // Clear any old session data to ensure fresh login
     this.session = {};
+
+    await this.updateAuthRuntime("qr_login_starting", {
+      reauthNeeded: true,
+    });
 
     // Step 1: Get QR code URL
     if (!(await this.qrLoginStep1())) {
@@ -318,6 +570,10 @@ class MihomeCloud extends utils.Adapter {
           this.session.loginUrl = data.loginUrl;
           this.session.longPollingUrl = data.lp;
           this.session.timeout = data.timeout;
+          await this.updateAuthRuntime("qr_login_pending", {
+            reauthNeeded: true,
+            loginUrl: data.loginUrl,
+          });
           this.log.debug("QR code URLs extracted successfully");
           this.log.debug(`QR Image URL: ${data.qr}`);
           this.log.debug(`Login URL: ${data.loginUrl}`);
@@ -358,22 +614,12 @@ class MihomeCloud extends utils.Adapter {
       });
 
       if (response.status === 200) {
+        await this.updateAuthRuntime("qr_login_pending", {
+          reauthNeeded: true,
+          loginUrl: this.session.loginUrl || "",
+        });
         this.log.warn(
-          "════════════════════════════════════════════════════════",
-        );
-        this.log.warn("  XIAOMI CLOUD LOGIN REQUIRED");
-        this.log.warn(
-          "════════════════════════════════════════════════════════",
-        );
-        this.log.warn("");
-        this.log.warn("Please visit this URL in your browser and log in:");
-        this.log.warn(this.session.loginUrl);
-        this.log.warn("");
-        this.log.warn(
-          "After logging in, the adapter will automatically continue.",
-        );
-        this.log.warn(
-          "════════════════════════════════════════════════════════",
+          `XIAOMI CLOUD LOGIN REQUIRED: Please visit this URL in your browser and log in: ${this.session.loginUrl}. After logging in, the adapter will automatically continue.`,
         );
 
         return true;
@@ -408,6 +654,9 @@ class MihomeCloud extends utils.Adapter {
       const elapsed = Date.now() - startTime;
       if (elapsed > timeoutMs) {
         this.log.error(`QR code login timeout after ${elapsed / 1000} seconds`);
+        await this.updateAuthRuntime("reauth_required", {
+          reauthNeeded: true,
+        });
         return false;
       }
 
@@ -592,6 +841,10 @@ class MihomeCloud extends utils.Adapter {
 
         // Set connection state
         this.setState("info.connection", true, true);
+        await this.updateAuthRuntime("connected", {
+          reauthNeeded: false,
+          loginUrl: "",
+        });
 
         return true;
       }
@@ -2213,20 +2466,21 @@ class MihomeCloud extends utils.Adapter {
       this.saveCookies(); // Clear the saved state in adapter context
 
       this.setState("info.connection", false, true);
+      this.updateAuthRuntime("reauth_required", {
+        reauthNeeded: true,
+      });
+      this.scheduleReauthAttempt(`auth-error:${context}`);
       return true;
     }
     return false;
   }
 
   async refreshToken() {
-    // Note: With manual QR-code authentication, automatic token refresh is not possible.
-    // The session remains valid indefinitely until server-side invalidation.
-    // If a 401 error occurs, the user needs to manually restart the adapter to trigger a new login.
-    this.log.warn("Session appears to be invalid (401 error)");
     this.log.warn(
-      "Please check your adapter configuration and restart the adapter to re-authenticate",
+      "Session appears to be invalid - scheduling re-authentication",
     );
     this.setState("info.connection", false, true);
+    this.scheduleReauthAttempt("refresh-token");
   }
 
   generateNonce() {
@@ -2580,6 +2834,9 @@ class MihomeCloud extends utils.Adapter {
       this.refreshTimeout && clearTimeout(this.refreshTimeout);
       this.refreshTokenTimeout && clearTimeout(this.refreshTokenTimeout);
       this.updateInterval && clearInterval(this.updateInterval);
+      this.reauthTimer && clearTimeout(this.reauthTimer);
+      this.reauthTimer = null;
+      this.reauthScheduledAt = 0;
       callback();
     } catch (e) {
       callback();

@@ -154,7 +154,8 @@
   "protectedNative": [],
   "native": {
     "region": "de",
-    "interval": 10
+    "interval": 10,
+    "reauthCooldownMins": 5
   },
   "objects": [],
   "instanceObjects": [

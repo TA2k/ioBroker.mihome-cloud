@@ -61,6 +61,19 @@
             "lg": 4,
             "xl": 4,
             "label": "update_interval__in_minutes_"
+        },
+        "reauthCooldownMins": {
+            "type": "number",
+            "newLine": true,
+            "min": 1,
+            "max": 1440,
+            "xs": 12,
+            "sm": 12,
+            "md": 6,
+            "lg": 4,
+            "xl": 4,
+            "label": "qr_login_cooldown__in_minutes_",
+            "help": "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_"
         }
     },
     "i18n": true

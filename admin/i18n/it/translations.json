@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Come accedere: Dopo aver salvato le impostazioni e avviato l'adattatore, un URL di accesso apparirà nel registro dell'adattatore. Apri questo URL nel browser e accedi con il tuo account Xiaomi. L'adattatore si connetterà automaticamente.",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Tempo minimo tra i tentativi automatici di accesso QR dopo una sessione scaduta o non riuscita.",
+    "qr_login_cooldown__in_minutes_": "Cooldown del login QR (in minuti)",
     "region": "Regione",
     "update_interval__in_minutes_": "Intervallo di aggiornamento (in minuti)"
 }

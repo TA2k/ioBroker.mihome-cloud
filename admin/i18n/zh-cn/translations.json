@@ -1,5 +1,7 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "ℹ️ 如何登录：保存设置并启动适配器后，适配器日志中将显示登录URL。在浏览器中打开此URL并使用您的小米帐户登录。适配器将自动连接。",
+    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "会话过期或失败后，自动 QR 登录重试之间的最小间隔时间。",
+    "qr_login_cooldown__in_minutes_": "QR 登录冷却时间（分钟）",
     "region": "区域",
     "update_interval__in_minutes_": "更新间隔（分钟）"
 }
