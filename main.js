@@ -2754,10 +2754,9 @@ class MihomeCloud extends utils.Adapter {
 
       if (regionChanged) {
         // Region changed: Delete devices but KEEP session (session is valid across regions)
-        this.log.warn("Region changed!");
-        this.log.warn(`  Old region: ${cookieData.region}`);
-        this.log.warn(`  New region: ${this.config.region}`);
-        this.log.warn("  Deleting all old device objects...");
+        this.log.warn(
+          `Region changed! Old: ${cookieData.region}, New: ${this.config.region}. Deleting all old device objects...`,
+        );
         await this.deleteAllDevices();
         this.log.info("  Session will be resumed with new region");
         // Update stored region to new value
