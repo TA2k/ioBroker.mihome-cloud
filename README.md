@@ -39,7 +39,7 @@ The adapter uses a **URL-based login** (no username/password needed in the adapt
 
 1. Configure **Region**, **Update interval** and (optionally) **Login cooldown** in the adapter settings and save.
 2. Start the adapter.
-3. The adapter creates a **login URL** and exposes it in two places:
+3. If no valid persisted session is available, the adapter creates a **login URL** and exposes it in two places:
    - as a warning in the adapter log
    - as state `mihome-cloud.0.auth.loginUrl`
 4. Open the URL in your browser and sign in with your Xiaomi account.
@@ -47,8 +47,9 @@ The adapter uses a **URL-based login** (no username/password needed in the adapt
 
 When the session expires server-side, the adapter clears the invalid session and switches to re-authentication state (`mihome-cloud.0.auth.status = reauth_required`).
 
-- If **Login cooldown > 0**, automatic login attempts are started.
-- If **Login cooldown = 0**, automatic login attempts are disabled by design.
+- **Startup behavior**: If no valid session exists on adapter start, one login attempt (login URL generation) is triggered even when **Login cooldown = 0**.
+- **Runtime behavior**: If **Login cooldown > 0**, automatic re-login attempts are started after authentication failures/expiry.
+- **Runtime behavior**: If **Login cooldown = 0**, no further automatic re-login attempts are started during runtime.
 
 The session is persisted in `auth.session` and can be reused after adapter restarts when still valid.
 
@@ -70,13 +71,17 @@ Authentication runtime and session states:
 
 Per device, the adapter creates:
 
+If the Xiaomi account or configured region changes, old device objects are removed and recreated for the current account/region.
+
 ### `mihome-cloud.0.<device-id>.general`
 
 General device information (model, name, firmware version, etc.).
 
 ### `mihome-cloud.0.<device-id>.status`
 
-Read-only states from MIoT specification properties and events. These are polled at the configured update interval.
+Read-only states from MIoT specification properties (polled at the configured update interval).
+
+Event indicator states may exist depending on model/spec parsing, but cloud event subscription is currently not active in this adapter.
 
 ### `mihome-cloud.0.<device-id>.remote`
 
@@ -86,7 +91,7 @@ Writable MIoT specification properties and actions.
 - Actions are sent via MIoT `action`
 - Actions with input arguments expect JSON input in the state value
 
-After commands, the adapter performs an automatic status refresh.
+After commands, the adapter performs an automatic status refresh for MIoT spec and custom states (vacuum status updates continue via normal polling cycle).
 
 ### `mihome-cloud.0.<device-id>.custom`
 
@@ -130,7 +135,8 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 - **"ECONNRESET" errors**: Temporary network interruptions to the Xiaomi Cloud. The adapter retries automatically at the next polling interval.
 - **"-106 device network unreachable"**: The device (e.g., a vacuum cleaner) is currently offline, disconnected from Wi-Fi, or powered off. The adapter will log this as debug and keep trying.
 - **401/400 authentication errors**: The adapter clears the invalid session and enters re-authentication mode. A new login URL is provided via log warning and `auth.loginUrl` if automatic login attempts are enabled.
-- **No new login URL after session expiry**: Check **Login cooldown**. If set to `0`, automatic login attempts (and automatic login URL creation) are disabled.
+- **No new login URL after session expiry**: Check **Login cooldown**. If set to `0`, automatic login attempts during runtime are disabled. On adapter start without valid session, one login URL is still generated.
+- **Device tree rebuilt after account/region change**: Expected behavior. The adapter removes old device objects and recreates them for the active account/region.
 - **No properties for device**: Some pure Zigbee/Bluetooth sensor devices (e.g. `lumi.sensor_switch.v2`) do not expose their status via the Cloud API. Consider using a local Zigbee adapter instead.
 
 ## Discussion and questions
@@ -139,6 +145,8 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 
 ## Changelog
 ### **WORK IN PROGRESS**
+- (lubepi) **FIXED**: Startup now creates a login URL even with login cooldown `0` when no valid session is available
+- (lubepi) **ENHANCED**: Clarified README behavior for startup vs runtime re-authentication, polling scope, and account/region object rebuilds
 - (lubepi) **ENHANCED**: Added configurable login cooldown with optional disable mode (`0`) for automatic login attempts
 - (lubepi) **ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` for automation and easier re-authentication handling
 - (lubepi) **ENHANCED**: Updated README sections for configuration, login flow, object tree, troubleshooting, and requirements alignment

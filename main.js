@@ -414,7 +414,9 @@ class MihomeCloud extends utils.Adapter {
       return false;
     }
 
-    if (this.reauthCooldownMs === 0) {
+    // Allow one forced login attempt on startup even when cooldown is disabled.
+    // Runtime retries still remain disabled when cooldown is 0.
+    if (this.reauthCooldownMs === 0 && !forceImmediate) {
       await this.updateAuthRuntime("reauth_required");
       return false;
     }
