@@ -138,9 +138,7 @@ class MihomeCloud extends utils.Adapter {
 
     this.subscribeStates("*");
     await this.ensureAuthStates();
-    await this.updateAuthRuntime("starting", {
-      loginUrl: "",
-    });
+    await this.updateAuthRuntime("starting");
 
     // Try to load saved cookies first
     this.log.info("Attempting to load saved cookies...");
@@ -444,9 +442,7 @@ class MihomeCloud extends utils.Adapter {
 
     if (success) {
       this.reauthAttemptCount = 0;
-      await this.updateAuthRuntime("connected", {
-        loginUrl: "",
-      });
+      await this.updateAuthRuntime("connected");
       this.log.info(`Re-authentication succeeded (${reason})`);
     } else {
       this.reauthAttemptCount += 1;
@@ -828,9 +824,7 @@ class MihomeCloud extends utils.Adapter {
 
         // Set connection state
         this.setState("info.connection", true, true);
-        await this.updateAuthRuntime("connected", {
-          loginUrl: "",
-        });
+        await this.updateAuthRuntime("connected");
 
         return true;
       }
