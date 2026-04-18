@@ -226,7 +226,9 @@ class MihomeCloud extends utils.Adapter {
     // The interval will handle reconnection attempts
     this.updateInterval = setInterval(
       async () => {
-        if (this.unloaded) return;
+        if (this.unloaded) {
+          return;
+        }
         try {
           if (!this.session.ssecurity) {
             if (this.reauthCooldownMs === 0) {
@@ -238,7 +240,9 @@ class MihomeCloud extends utils.Adapter {
           }
 
           // If we have session credentials but connection is false, try to re-validate session
-          if (this.unloaded) return;
+          if (this.unloaded) {
+            return;
+          }
           const connectionState = await this.getStateAsync("info.connection");
           if (
             this.session.ssecurity &&
@@ -278,8 +282,12 @@ class MihomeCloud extends utils.Adapter {
             await this.updateVacuumStatus();
           }
         } catch (error) {
-          if (error.message === "DB closed" || error.message.includes("closed"))
+          if (
+            error.message === "DB closed" ||
+            error.message.includes("closed")
+          ) {
             return;
+          }
           this.log.error(`Error in polling interval: ${error.message}`);
           this.log.debug(error.stack);
         }
@@ -628,7 +636,9 @@ class MihomeCloud extends utils.Adapter {
     // Start long polling
 
     while (true) {
-      if (this.unloaded) return false;
+      if (this.unloaded) {
+        return false;
+      }
       // Check if overall timeout exceeded BEFORE making request
       const elapsed = Date.now() - startTime;
       if (elapsed > timeoutMs) {
@@ -2717,7 +2727,9 @@ class MihomeCloud extends utils.Adapter {
    */
   async loadCookies() {
     try {
-      if (this.unloaded) return false;
+      if (this.unloaded) {
+        return false;
+      }
       const state = await this.getStateAsync(this.cookieStateId);
       if (!state || !state.val) {
         this.log.debug("No saved cookies found");
@@ -2828,7 +2840,9 @@ class MihomeCloud extends utils.Adapter {
    * @param {ioBroker.State | null | undefined} state
    */
   async onStateChange(id, state) {
-    if (this.unloaded) return;
+    if (this.unloaded) {
+      return;
+    }
     if (state) {
       if (!state.ack) {
         const deviceId = id.split(".")[2];
