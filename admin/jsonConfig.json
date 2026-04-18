@@ -63,11 +63,9 @@
             "label": "update_interval__in_minutes_",
             "help": "how_often_device_status_is_fetched_via_the_api_"
         },
-        "reauthCooldownMins": {
-            "type": "number",
+        "disableRuntimeLoginAttempts": {
+            "type": "checkbox",
             "newLine": true,
-            "min": 0,
-            "max": 1440,
             "xs": 12,
             "sm": 12,
             "md": 6,

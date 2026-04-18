@@ -1,8 +1,8 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "Inicio de sesión: Después de guardar la configuración y arrancar el adaptador, aparecerá una URL de inicio de sesión como advertencia en el registro y también en el objeto auth.loginUrl de la instancia. Abra esta URL en su navegador para iniciar sesión con su cuenta Xiaomi. El adaptador se conectará automáticamente.",
     "how_often_device_status_is_fetched_via_the_api_": "Define con qué frecuencia se consulta el estado de los dispositivos mediante la API.",
-    "login_cooldown__in_minutes_": "Intervalo de espera de inicio de sesión (en minutos)",
-    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Tiempo mínimo entre intentos automáticos de inicio de sesión (creación de URL de inicio de sesión) tras una sesión caducada o fallida. 0 = desactivado",
+    "login_cooldown__in_minutes_": "Bloquear intentos de inicio de sesión adicionales durante la ejecución",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Si se activa, no se iniciarán intentos automáticos de inicio de sesión adicionales durante la ejecución después del intento inicial al arrancar.",
     "region": "Región",
     "update_interval__in_minutes_": "Intervalo de actualización (en minutos)"
 }

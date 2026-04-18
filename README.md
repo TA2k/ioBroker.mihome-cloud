@@ -31,13 +31,13 @@ In the adapter settings you can configure:
 | ------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Region**          | Select the Xiaomi Cloud region matching your Mi Home app (Germany, China, Russia, Taiwan, Singapore, USA) |
 | **Update interval** | Polling interval in minutes for device status updates via the Xiaomi Cloud API (minimum 1 minute in Admin UI) |
-| **Login cooldown**  | Minimum time between automatic login attempts after an expired or failed session. With `0`, timed runtime retries are disabled; startup login URL generation (without valid session) stays active. |
+| **Block additional runtime login attempts** | If enabled, no additional automatic login attempts are started during runtime after the initial startup attempt. |
 
 ## Login
 
 The adapter uses a **URL-based login** (no username/password needed in the adapter settings).
 
-1. Configure **Region**, **Update interval** and (optionally) **Login cooldown** in the adapter settings and save.
+1. Configure **Region**, **Update interval** and (optionally) **Block additional runtime login attempts** in the adapter settings and save.
 2. Start the adapter.
 3. If no valid persisted session is available, the adapter creates a **login URL** and exposes it in two places:
    - as a warning in the adapter log
@@ -47,9 +47,9 @@ The adapter uses a **URL-based login** (no username/password needed in the adapt
 
 When the session expires server-side, the adapter clears the invalid session and switches to re-authentication state (`mihome-cloud.0.auth.status = reauth_required`).
 
-- **Startup behavior**: If no valid session exists on adapter start, one login attempt (login URL generation) is triggered even when **Login cooldown = 0**.
-- **Runtime behavior**: If **Login cooldown > 0**, automatic re-login attempts are scheduled after authentication failures/session expiry and executed after the configured cooldown time.
-- **Runtime behavior**: If **Login cooldown = 0**, the first explicit runtime authentication error (currently HTTP `401/400`) triggers one immediate automatic re-login attempt. Further automatic runtime re-login attempts are disabled for the rest of the adapter runtime.
+- **Startup behavior**: If no valid session exists on adapter start, one login attempt (login URL generation) is triggered.
+- **Runtime behavior**: Automatic re-login attempts are scheduled after authentication failures/session expiry.
+- **Optional runtime block**: If **Block additional runtime login attempts** is enabled, no further automatic login attempts are started during runtime.
 
 The session is persisted in `auth.session` and can be reused after adapter restarts when still valid.
 
@@ -135,7 +135,7 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 - **"ECONNRESET" errors**: Temporary network interruptions to the Xiaomi Cloud. The adapter retries automatically at the next polling interval.
 - **"-106 device network unreachable"**: The device (e.g., a vacuum cleaner) is currently offline, disconnected from Wi-Fi, or powered off. The adapter will log this as debug and keep trying.
 - **401/400 authentication errors**: The adapter clears the invalid session and enters re-authentication mode. A new login URL is provided via log warning and `auth.loginUrl` if automatic login attempts are enabled.
-- **No new login URL after session expiry**: Check **Login cooldown**. With `0`, only one immediate automatic runtime re-login attempt is allowed after the first explicit auth error (`401/400`), then runtime auto-retries are disabled. On adapter start without valid session, one login URL is still generated.
+- **No new login URL after session expiry**: Check **Block additional runtime login attempts**. If enabled, runtime auto-retries are suppressed by design.
 - **Device tree rebuilt after account/region change**: Expected behavior. The adapter removes old device objects and recreates them for the active account/region.
 - **No properties for device**: Some pure Zigbee/Bluetooth sensor devices (e.g. `lumi.sensor_switch.v2`) do not expose their status via the Cloud API. Consider using a local Zigbee adapter instead.
 
@@ -145,13 +145,9 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 
 ## Changelog
 ### **WORK IN PROGRESS**
-- (lubepi) **FIXED**: With login cooldown `0`, first explicit runtime auth error (`401/400`) now triggers one immediate auto re-login attempt
-- (lubepi) **ENHANCED**: Clarified README behavior for cooldown `0` (startup login, one immediate runtime attempt, no further runtime auto-retries)
-- (lubepi) **FIXED**: Startup now creates a login URL even with login cooldown `0` when no valid session is available
-- (lubepi) **ENHANCED**: Clarified README behavior for startup vs runtime re-authentication, polling scope, and account/region object rebuilds
-- (lubepi) **ENHANCED**: Added configurable login cooldown with optional disable mode (`0`) for automatic login attempts
+- (lubepi) **NEW**: Added admin option to block additional automatic runtime login attempts to reduce log spam
 - (lubepi) **ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` for automation and easier re-authentication handling
-- (lubepi) **ENHANCED**: Updated README sections for configuration, login flow, object tree, troubleshooting, and requirements alignment
+- (lubepi) **ENHANCED**: Updated README
 - (lubepi) **FIXED**: Suppress "DB closed" warnings during adapter shutdown and restart by implementing a clean shutdown flag
 - (lubepi) **ENHANCED**: Optimized error handling to prevent uncontrolled adapter crashes from expired sessions and missing null guards
 

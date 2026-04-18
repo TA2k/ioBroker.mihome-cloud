@@ -1,8 +1,8 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "登录：保存设置并启动适配器后，日志中会出现登录 URL 警告，同时也会写入实例的 auth.loginUrl 对象。请在浏览器中打开该 URL 并使用你的小米账号登录。适配器随后会自动连接。",
     "how_often_device_status_is_fetched_via_the_api_": "定义通过 API 获取设备状态的频率。",
-    "login_cooldown__in_minutes_": "登录冷却时间（分钟）",
-    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "会话过期或失败后，自动登录尝试（创建登录 URL）之间的最小时间。0 = 禁用",
+    "login_cooldown__in_minutes_": "阻止运行期间的额外登录尝试",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "启用后，在启动时的首次尝试之后，运行期间不会再发起额外的自动登录尝试。",
     "region": "地区",
     "update_interval__in_minutes_": "更新间隔（分钟）"
 }

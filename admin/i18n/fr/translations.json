@@ -1,8 +1,8 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "Connexion : Après avoir enregistré les paramètres et démarré l'adaptateur, une URL de connexion apparaît comme avertissement dans le journal et aussi dans l'objet auth.loginUrl de l'instance. Ouvrez cette URL dans votre navigateur pour vous connecter avec votre compte Xiaomi. L'adaptateur se connecte ensuite automatiquement.",
     "how_often_device_status_is_fetched_via_the_api_": "Définit la fréquence de récupération de l'état des appareils via l'API.",
-    "login_cooldown__in_minutes_": "Délai de connexion (en minutes)",
-    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Délai minimal entre les tentatives automatiques de connexion (création de l'URL de connexion) après une session expirée ou échouée. 0 = désactivé",
+    "login_cooldown__in_minutes_": "Bloquer les tentatives de connexion supplémentaires en cours d'exécution",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Si activé, aucune tentative de connexion automatique supplémentaire n'est lancée pendant l'exécution après la tentative initiale au démarrage.",
     "region": "Région",
     "update_interval__in_minutes_": "Intervalle de mise à jour (en minutes)"
 }

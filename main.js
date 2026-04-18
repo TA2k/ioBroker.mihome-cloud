@@ -34,7 +34,6 @@ class MihomeCloud extends utils.Adapter {
     this.QR_CODE_TIMEOUT = 300; // QR code valid for 5 minutes (seconds)
     this.LONG_POLL_TIMEOUT = 10000; // Long polling timeout per request (ms)
     this.EVENT_AUTO_RESET_DELAY = 5000; // Auto-reset events after 5 seconds
-    this.DEFAULT_REAUTH_COOLDOWN_MINS = 15; // Minimum time between login attempts
 
     // Device tracking
     this.deviceArray = [];
@@ -74,8 +73,8 @@ class MihomeCloud extends utils.Adapter {
     this.loginInProgress = false;
     this.reauthAttemptCount = 0;
     this.lastLoginAttemptTs = 0;
-    this.runtimeNoCooldownAuthRetryUsed = false;
-    this.reauthCooldownMs = this.DEFAULT_REAUTH_COOLDOWN_MINS * 60 * 1000;
+    this.reauthCooldownMs = this.QR_CODE_TIMEOUT * 1000;
+    this.disableRuntimeLoginAttempts = false;
     this.unloaded = false;
   }
 
@@ -102,24 +101,10 @@ class MihomeCloud extends utils.Adapter {
       this.config.interval = MAX_INTERVAL_MINS;
     }
 
-    if (typeof this.config.reauthCooldownMins !== "number") {
-      this.config.reauthCooldownMins = parseFloat(
-        this.config.reauthCooldownMins,
-      );
-    }
-    if (Number.isNaN(this.config.reauthCooldownMins)) {
-      this.config.reauthCooldownMins = this.DEFAULT_REAUTH_COOLDOWN_MINS;
-    }
-    if (this.config.reauthCooldownMins < 0) {
-      this.log.info("Re-auth cooldown too small, setting to minimum 0 minutes");
-      this.config.reauthCooldownMins = 0;
-    } else if (this.config.reauthCooldownMins > 1440) {
-      this.log.info(
-        "Re-auth cooldown too large, limiting to maximum 1440 minutes",
-      );
-      this.config.reauthCooldownMins = 1440;
-    }
-    this.reauthCooldownMs = this.config.reauthCooldownMins * 60 * 1000;
+    this.disableRuntimeLoginAttempts =
+      this.config.disableRuntimeLoginAttempts === true ||
+      this.config.disableRuntimeLoginAttempts === "true" ||
+      this.config.disableRuntimeLoginAttempts === 1;
     this.header = {
       "miot-encrypt-algorithm": "ENCRYPT-RC4",
       "content-type": "application/x-www-form-urlencoded",
@@ -234,7 +219,7 @@ class MihomeCloud extends utils.Adapter {
         }
         try {
           if (!this.session.ssecurity) {
-            if (this.reauthCooldownMs === 0) {
+            if (this.disableRuntimeLoginAttempts) {
               await this.updateAuthRuntime("reauth_required");
               return;
             }
@@ -265,7 +250,7 @@ class MihomeCloud extends utils.Adapter {
               this.log.warn(
                 "Session validation failed, attempting fresh login...",
               );
-              if (this.reauthCooldownMs === 0) {
+              if (this.disableRuntimeLoginAttempts) {
                 await this.updateAuthRuntime("reauth_required");
                 return;
               }
@@ -370,8 +355,11 @@ class MihomeCloud extends utils.Adapter {
       return;
     }
 
-    if (this.reauthCooldownMs === 0) {
+    if (this.disableRuntimeLoginAttempts && this.updateInterval) {
       this.updateAuthRuntime("reauth_required");
+      this.log.warn(
+        `Automatic runtime login attempts are disabled, skipping scheduled retry (${reason})`,
+      );
       return;
     }
 
@@ -403,6 +391,15 @@ class MihomeCloud extends utils.Adapter {
     this.reauthTimer = setTimeout(() => {
       this.reauthTimer = null;
       this.reauthScheduledAt = 0;
+
+      if (this.disableRuntimeLoginAttempts && this.updateInterval) {
+        this.updateAuthRuntime("reauth_required");
+        this.log.warn(
+          `Automatic runtime login attempts are disabled, skipping scheduled retry (${reason})`,
+        );
+        return;
+      }
+
       this.performReauth(`scheduled:${reason}`).catch((error) => {
         this.log.error(`Scheduled re-authentication failed: ${error.message}`);
       });
@@ -415,9 +412,11 @@ class MihomeCloud extends utils.Adapter {
       return false;
     }
 
-    // Allow one forced login attempt on startup even when cooldown is disabled.
-    // Runtime retries still remain disabled when cooldown is 0.
-    if (this.reauthCooldownMs === 0 && !forceImmediate) {
+    if (
+      !forceImmediate &&
+      this.disableRuntimeLoginAttempts &&
+      this.updateInterval
+    ) {
       await this.updateAuthRuntime("reauth_required");
       return false;
     }
@@ -454,16 +453,10 @@ class MihomeCloud extends utils.Adapter {
     } else {
       this.reauthAttemptCount += 1;
       await this.updateAuthRuntime("reauth_required");
-      if (this.reauthCooldownMs > 0) {
-        this.log.warn(
-          `Re-authentication failed (${reason}), next try in ${Math.ceil(this.reauthCooldownMs / 1000)}s`,
-        );
-        this.scheduleReauthAttempt("failed-login");
-      } else {
-        this.log.warn(
-          `Re-authentication failed (${reason}), automatic login attempts are disabled (cooldown = 0).`,
-        );
-      }
+      this.log.warn(
+        `Re-authentication failed (${reason}), next try in ${Math.ceil(this.reauthCooldownMs / 1000)}s`,
+      );
+      this.scheduleReauthAttempt("failed-login");
     }
 
     this.loginInProgress = false;
@@ -560,7 +553,14 @@ class MihomeCloud extends utils.Adapter {
           this.session.qrImageUrl = data.qr;
           this.session.loginUrl = data.loginUrl;
           this.session.longPollingUrl = data.lp;
-          this.session.timeout = data.timeout;
+
+          const timeoutSeconds = Number.parseInt(data.timeout, 10);
+          this.session.timeout =
+            Number.isFinite(timeoutSeconds) && timeoutSeconds > 0
+              ? timeoutSeconds
+              : this.QR_CODE_TIMEOUT;
+          this.reauthCooldownMs = this.session.timeout * 1000;
+
           await this.updateAuthRuntime("qr_login_pending", {
             loginUrl: data.loginUrl,
           });
@@ -2475,41 +2475,15 @@ class MihomeCloud extends utils.Adapter {
 
       this.setState("info.connection", false, true);
       this.updateAuthRuntime("reauth_required");
-
-      // Runtime behavior with cooldown disabled:
-      // Trigger exactly one immediate automatic login attempt on first explicit auth error.
-      // Afterwards, suppress additional automatic runtime login attempts.
       const runtimeActive = !!this.updateInterval;
-      if (this.reauthCooldownMs === 0 && runtimeActive) {
-        if (!this.runtimeNoCooldownAuthRetryUsed) {
-          this.runtimeNoCooldownAuthRetryUsed = true;
-          this.lastLoginAttemptTs = 0;
-
-          if (this.reauthTimer) {
-            clearTimeout(this.reauthTimer);
-            this.reauthTimer = null;
-            this.reauthScheduledAt = 0;
-          }
-
-          this.log.warn(
-            `Cooldown is 0 - running one immediate runtime re-authentication attempt after ${error.response.status} (${context})`,
-          );
-
-          this.performReauth(`runtime-first-auth-error:${context}`, true).catch(
-            (reauthError) => {
-              this.log.error(
-                `Immediate runtime re-authentication failed: ${reauthError.message}`,
-              );
-            },
-          );
-        } else {
-          this.log.warn(
-            "Cooldown is 0 - immediate runtime re-authentication attempt already used. Further automatic runtime login attempts are disabled.",
-          );
-        }
-      } else {
-        this.scheduleReauthAttempt(`auth-error:${context}`);
+      if (this.disableRuntimeLoginAttempts && runtimeActive) {
+        this.log.warn(
+          "Automatic runtime login attempts are disabled by configuration.",
+        );
+        return true;
       }
+
+      this.scheduleReauthAttempt(`auth-error:${context}`);
       return true;
     }
     return false;
@@ -2520,6 +2494,15 @@ class MihomeCloud extends utils.Adapter {
       "Session appears to be invalid - scheduling re-authentication",
     );
     this.setState("info.connection", false, true);
+
+    if (this.disableRuntimeLoginAttempts && this.updateInterval) {
+      await this.updateAuthRuntime("reauth_required");
+      this.log.warn(
+        "Automatic runtime login attempts are disabled by configuration.",
+      );
+      return;
+    }
+
     this.scheduleReauthAttempt("refresh-token");
   }
 

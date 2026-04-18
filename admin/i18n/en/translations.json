@@ -1,8 +1,8 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "Login: After saving the settings and starting the adapter, a login URL appears as a warning in the log and also in the instance auth.loginUrl object. Open this URL in your browser to sign in with your Xiaomi account. The adapter then connects automatically.",
     "how_often_device_status_is_fetched_via_the_api_": "Defines how often the device status is fetched via the API.",
-    "login_cooldown__in_minutes_": "Login cooldown (in minutes)",
-    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Minimum time between automatic login attempts (login URL creation) after an expired or failed session. 0 = disabled",
+    "login_cooldown__in_minutes_": "Block additional runtime login attempts",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "If enabled, no additional automatic login attempts are started during runtime after the initial startup attempt.",
     "region": "Region",
     "update_interval__in_minutes_": "Update interval (in minutes)"
 }

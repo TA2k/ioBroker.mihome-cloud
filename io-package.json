@@ -155,7 +155,7 @@
   "native": {
     "region": "de",
     "interval": 10,
-    "reauthCooldownMins": 15
+    "disableRuntimeLoginAttempts": false
   },
   "objects": [],
   "instanceObjects": [

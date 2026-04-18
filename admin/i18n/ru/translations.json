@@ -1,8 +1,8 @@
 {
     "___login_guide__after_saving_and_starting_the_adap": "Вход: После сохранения настроек и запуска адаптера URL для входа появится как предупреждение в журнале и также в объекте auth.loginUrl экземпляра. Откройте этот URL в браузере, чтобы войти в аккаунт Xiaomi. Затем адаптер подключится автоматически.",
     "how_often_device_status_is_fetched_via_the_api_": "Определяет, как часто статус устройств запрашивается через API.",
-    "login_cooldown__in_minutes_": "Пауза между попытками входа (в минутах)",
-    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Минимальный интервал между автоматическими попытками входа (создание URL для входа) после истекшей или неудачной сессии. 0 = отключено",
+    "login_cooldown__in_minutes_": "Блокировать дополнительные попытки входа во время работы",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Если включено, после начальной попытки при запуске не будут выполняться дополнительные автоматические попытки входа во время работы адаптера.",
     "region": "Регион",
     "update_interval__in_minutes_": "Интервал обновления (в минутах)"
 }
