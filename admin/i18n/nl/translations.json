@@ -1,7 +1,8 @@
 {
-    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Inloggen: Na het opslaan van de instellingen en het starten van de adapter verschijnt er een inlog-URL in het adapter-logboek. Open deze URL in uw browser en log in met uw Xiaomi-account. De adapter maakt dan automatisch verbinding.",
-    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Minimale tijd tussen automatische QR-loginpogingen na een verlopen of mislukte sessie.",
-    "qr_login_cooldown__in_minutes_": "QR-login afkoeltijd (in minuten)",
-    "region": "Region",
+    "___login_guide__after_saving_and_starting_the_adap": "Inloggen: Na het opslaan van de instellingen en het starten van de adapter verschijnt er een inlog-URL als waarschuwing in het log en ook in het auth.loginUrl-object van de instantie. Open deze URL in uw browser om in te loggen met uw Xiaomi-account. De adapter maakt daarna automatisch verbinding.",
+    "how_often_device_status_is_fetched_via_the_api_": "Bepaalt hoe vaak de apparaatstatus via de API wordt opgehaald.",
+    "login_cooldown__in_minutes_": "Inlog-afkoeltijd (in minuten)",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Minimale tijd tussen automatische inlogpogingen (aanmaken van inlog-URL) na een verlopen of mislukte sessie. 0 = uitgeschakeld",
+    "region": "Regio",
     "update_interval__in_minutes_": "Update-interval (in minuten)"
 }

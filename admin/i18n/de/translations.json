@@ -1,7 +1,8 @@
 {
-    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Anmeldung: Nach dem Speichern der Einstellungen und dem Starten des Adapters erscheint eine Login-URL im Log. Öffnen Sie diese URL im Browser, um sich mit Ihrem Xiaomi-Konto anzumelden. Der Adapter verbindet sich anschließend automatisch.",
-    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Minimale Zeit zwischen automatischen QR-Login-Versuchen nach abgelaufener oder fehlgeschlagener Sitzung.",
-    "qr_login_cooldown__in_minutes_": "QR-Login-Cooldown (in Minuten)",
+    "___login_guide__after_saving_and_starting_the_adap": "Anmeldung: Nach dem Speichern der Einstellungen und dem Starten des Adapters erscheint eine Login-URL als Warnung im Log und auch im auth.loginUrl Objekt der Instanz. Öffnen Sie diese URL im Browser, um sich mit Ihrem Xiaomi-Konto anzumelden. Der Adapter verbindet sich anschließend automatisch.",
+    "how_often_device_status_is_fetched_via_the_api_": "Legt fest, wie häufig der Gerätestatus über die API abgerufen wird.",
+    "login_cooldown__in_minutes_": "Login-Cooldown (in Minuten)",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Minimale Zeit zwischen automatischen Login-Versuchen (Login-URL Erstellung) nach abgelaufener oder fehlgeschlagener Sitzung. 0 = deaktiviert",
     "region": "Region",
     "update_interval__in_minutes_": "Aktualisierungsintervall (in Minuten)"
 }

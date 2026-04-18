@@ -60,20 +60,21 @@
             "md": 6,
             "lg": 4,
             "xl": 4,
-            "label": "update_interval__in_minutes_"
+            "label": "update_interval__in_minutes_",
+            "help": "how_often_device_status_is_fetched_via_the_api_"
         },
         "reauthCooldownMins": {
             "type": "number",
             "newLine": true,
-            "min": 1,
+            "min": 0,
             "max": 1440,
             "xs": 12,
             "sm": 12,
             "md": 6,
             "lg": 4,
             "xl": 4,
-            "label": "qr_login_cooldown__in_minutes_",
-            "help": "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_"
+            "label": "login_cooldown__in_minutes_",
+            "help": "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled"
         }
     },
     "i18n": true

@@ -34,7 +34,7 @@ class MihomeCloud extends utils.Adapter {
     this.QR_CODE_TIMEOUT = 300; // QR code valid for 5 minutes (seconds)
     this.LONG_POLL_TIMEOUT = 10000; // Long polling timeout per request (ms)
     this.EVENT_AUTO_RESET_DELAY = 5000; // Auto-reset events after 5 seconds
-    this.DEFAULT_REAUTH_COOLDOWN_MINS = 5; // Minimum time between QR login starts
+    this.DEFAULT_REAUTH_COOLDOWN_MINS = 15; // Minimum time between login attempts
 
     // Device tracking
     this.deviceArray = [];
@@ -101,13 +101,16 @@ class MihomeCloud extends utils.Adapter {
     }
 
     if (typeof this.config.reauthCooldownMins !== "number") {
-      this.config.reauthCooldownMins =
-        parseFloat(this.config.reauthCooldownMins) ||
-        this.DEFAULT_REAUTH_COOLDOWN_MINS;
+      this.config.reauthCooldownMins = parseFloat(
+        this.config.reauthCooldownMins,
+      );
     }
-    if (this.config.reauthCooldownMins < 1) {
-      this.log.info("Re-auth cooldown too small, setting to minimum 1 minute");
-      this.config.reauthCooldownMins = 1;
+    if (Number.isNaN(this.config.reauthCooldownMins)) {
+      this.config.reauthCooldownMins = this.DEFAULT_REAUTH_COOLDOWN_MINS;
+    }
+    if (this.config.reauthCooldownMins < 0) {
+      this.log.info("Re-auth cooldown too small, setting to minimum 0 minutes");
+      this.config.reauthCooldownMins = 0;
     } else if (this.config.reauthCooldownMins > 1440) {
       this.log.info(
         "Re-auth cooldown too large, limiting to maximum 1440 minutes",
@@ -225,6 +228,13 @@ class MihomeCloud extends utils.Adapter {
     this.updateInterval = setInterval(
       async () => {
         if (!this.session.ssecurity) {
+          if (this.reauthCooldownMs === 0) {
+            await this.updateAuthRuntime("reauth_required", {
+              attemptCount: this.reauthAttemptCount,
+              nextLoginAttempt: 0,
+            });
+            return;
+          }
           await this.performReauth("polling-no-session");
           return;
         }
@@ -245,6 +255,13 @@ class MihomeCloud extends utils.Adapter {
             this.log.warn(
               "Session validation failed, attempting fresh login...",
             );
+            if (this.reauthCooldownMs === 0) {
+              await this.updateAuthRuntime("reauth_required", {
+                attemptCount: this.reauthAttemptCount,
+                nextLoginAttempt: 0,
+              });
+              return;
+            }
             await this.performReauth("polling-session-validation-failed");
             return;
           } else {
@@ -355,6 +372,14 @@ class MihomeCloud extends utils.Adapter {
       return;
     }
 
+    if (this.reauthCooldownMs === 0) {
+      this.updateAuthRuntime("reauth_required", {
+        nextLoginAttempt: 0,
+        attemptCount: this.reauthAttemptCount,
+      });
+      return;
+    }
+
     const now = Date.now();
     const cooldownUntil = this.lastLoginAttemptTs + this.reauthCooldownMs;
     const dueAt = forceImmediate ? now : Math.max(now, cooldownUntil);
@@ -398,6 +423,14 @@ class MihomeCloud extends utils.Adapter {
       return false;
     }
 
+    if (this.reauthCooldownMs === 0) {
+      await this.updateAuthRuntime("reauth_required", {
+        attemptCount: this.reauthAttemptCount,
+        nextLoginAttempt: 0,
+      });
+      return false;
+    }
+
     const now = Date.now();
     const cooldownUntil = this.lastLoginAttemptTs + this.reauthCooldownMs;
     if (!forceImmediate && now < cooldownUntil) {
@@ -436,15 +469,22 @@ class MihomeCloud extends utils.Adapter {
       this.log.info(`Re-authentication succeeded (${reason})`);
     } else {
       this.reauthAttemptCount += 1;
-      const nextAttemptAt = Date.now() + this.reauthCooldownMs;
+      const nextAttemptAt =
+        this.reauthCooldownMs > 0 ? Date.now() + this.reauthCooldownMs : 0;
       await this.updateAuthRuntime("reauth_required", {
         attemptCount: this.reauthAttemptCount,
         nextLoginAttempt: nextAttemptAt,
       });
-      this.log.warn(
-        `Re-authentication failed (${reason}), next try in ${Math.ceil(this.reauthCooldownMs / 1000)}s`,
-      );
-      this.scheduleReauthAttempt("failed-login");
+      if (this.reauthCooldownMs > 0) {
+        this.log.warn(
+          `Re-authentication failed (${reason}), next try in ${Math.ceil(this.reauthCooldownMs / 1000)}s`,
+        );
+        this.scheduleReauthAttempt("failed-login");
+      } else {
+        this.log.warn(
+          `Re-authentication failed (${reason}), automatic login attempts are disabled (cooldown = 0).`,
+        );
+      }
     }
 
     this.loginInProgress = false;

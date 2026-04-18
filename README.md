@@ -115,32 +115,32 @@ Smart scenes / automations from your Mi Home account. Set a scene to `true` to e
 <https://forum.iobroker.net/topic/59636/test-adapter-mihome-cloud>
 
 ## Changelog
+### **WORK IN PROGRESS**
+- (lubepi) Added configurable cooldown for QR-code relogin attempts
+- (lubepi) exposed the Xiaomi login URL as an object for automation
+
 ### 1.0.5 (2026-04-01)
-- (fix) improve 401 authentication error handling and session reset
-- (fix) validate and limit user configurable update interval
-- (fix) update dependencies to address vulnerabilities
+- (lubepi) improve 401 authentication error handling and session reset
+- (lubepi) validate and limit user configurable update interval
+- (lubepi) update dependencies to address vulnerabilities
 
 ### 1.0.4 (2026-03-14)
-- Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance
+- (lubepi) Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance
 
 ### 1.0.3 (2026-03-14)
-- **Major update with complete rewrite:**
-  - New QR-code based login flow
-  - Support for many new Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)
-  - Added environment properties (Temperature, Humidity) to many device configurations
-  - Improved error handling for network interruptions
-  - Migration to external i18n files and Node.js 20+ requirement
-  - Updated dependencies and fixed known vulnerabilities
-  - Added missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)
-  - Migration to ESLint flat config and release-script support
+- (lubepi) Improved error handling for network interruptions
+- (lubepi) Migration to external i18n files and Node.js 20+ requirement
+- (lubepi) Updated dependencies and fixed known vulnerabilities
+- (lubepi) Added missing translations (uk, ru, pt, nl, fr, it, es, pl, zh-cn)
+- (lubepi) Migration to ESLint flat config and release-script support
 
 ### 0.2.2
 
-- Minor improvements with device handling
+- (lubepi) Minor improvements with device handling
 
 ### 0.2.1
 
-- Fix login. Check Log after starting Adapter
+- (lubepi) Fix login. Check Log after starting Adapter
 
 ### 0.2.0
 

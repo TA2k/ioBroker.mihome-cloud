@@ -1,7 +1,8 @@
 {
-    "___login_guide__after_saving_and_starting_the_adap": "ℹ️ Как войти: После сохранения настроек и запуска адаптера в журнале адаптера появится URL для входа. Откройте этот URL в браузере и войдите в свою учетную запись Xiaomi. Адаптер подключится автоматически.",
-    "minimum_time_between_automatic_qr_login_attempts_after_failed_or_expired_session_": "Минимальный интервал между автоматическими попытками QR-входа после истекшей или неудачной сессии.",
-    "qr_login_cooldown__in_minutes_": "Пауза между QR-входами (в минутах)",
+    "___login_guide__after_saving_and_starting_the_adap": "Вход: После сохранения настроек и запуска адаптера URL для входа появится как предупреждение в журнале и также в объекте auth.loginUrl экземпляра. Откройте этот URL в браузере, чтобы войти в аккаунт Xiaomi. Затем адаптер подключится автоматически.",
+    "how_often_device_status_is_fetched_via_the_api_": "Определяет, как часто статус устройств запрашивается через API.",
+    "login_cooldown__in_minutes_": "Пауза между попытками входа (в минутах)",
+    "minimum_time_between_automatic_login_attempts__login_url_creation__after_expired_or_failed_session__0___disabled": "Минимальный интервал между автоматическими попытками входа (создание URL для входа) после истекшей или неудачной сессии. 0 = отключено",
     "region": "Регион",
     "update_interval__in_minutes_": "Интервал обновления (в минутах)"
 }
