@@ -74,6 +74,7 @@ class MihomeCloud extends utils.Adapter {
     this.loginInProgress = false;
     this.reauthAttemptCount = 0;
     this.lastLoginAttemptTs = 0;
+    this.runtimeNoCooldownAuthRetryUsed = false;
     this.reauthCooldownMs = this.DEFAULT_REAUTH_COOLDOWN_MINS * 60 * 1000;
     this.unloaded = false;
   }
@@ -2474,7 +2475,41 @@ class MihomeCloud extends utils.Adapter {
 
       this.setState("info.connection", false, true);
       this.updateAuthRuntime("reauth_required");
-      this.scheduleReauthAttempt(`auth-error:${context}`);
+
+      // Runtime behavior with cooldown disabled:
+      // Trigger exactly one immediate automatic login attempt on first explicit auth error.
+      // Afterwards, suppress additional automatic runtime login attempts.
+      const runtimeActive = !!this.updateInterval;
+      if (this.reauthCooldownMs === 0 && runtimeActive) {
+        if (!this.runtimeNoCooldownAuthRetryUsed) {
+          this.runtimeNoCooldownAuthRetryUsed = true;
+          this.lastLoginAttemptTs = 0;
+
+          if (this.reauthTimer) {
+            clearTimeout(this.reauthTimer);
+            this.reauthTimer = null;
+            this.reauthScheduledAt = 0;
+          }
+
+          this.log.warn(
+            `Cooldown is 0 - running one immediate runtime re-authentication attempt after ${error.response.status} (${context})`,
+          );
+
+          this.performReauth(`runtime-first-auth-error:${context}`, true).catch(
+            (reauthError) => {
+              this.log.error(
+                `Immediate runtime re-authentication failed: ${reauthError.message}`,
+              );
+            },
+          );
+        } else {
+          this.log.warn(
+            "Cooldown is 0 - immediate runtime re-authentication attempt already used. Further automatic runtime login attempts are disabled.",
+          );
+        }
+      } else {
+        this.scheduleReauthAttempt(`auth-error:${context}`);
+      }
       return true;
     }
     return false;
