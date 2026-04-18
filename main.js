@@ -139,8 +139,6 @@ class MihomeCloud extends utils.Adapter {
     await this.ensureAuthStates();
     await this.updateAuthRuntime("starting", {
       loginUrl: "",
-      attemptCount: 0,
-      nextLoginAttempt: 0,
     });
 
     // Try to load saved cookies first
@@ -229,10 +227,7 @@ class MihomeCloud extends utils.Adapter {
       async () => {
         if (!this.session.ssecurity) {
           if (this.reauthCooldownMs === 0) {
-            await this.updateAuthRuntime("reauth_required", {
-              attemptCount: this.reauthAttemptCount,
-              nextLoginAttempt: 0,
-            });
+            await this.updateAuthRuntime("reauth_required");
             return;
           }
           await this.performReauth("polling-no-session");
@@ -256,10 +251,7 @@ class MihomeCloud extends utils.Adapter {
               "Session validation failed, attempting fresh login...",
             );
             if (this.reauthCooldownMs === 0) {
-              await this.updateAuthRuntime("reauth_required", {
-                attemptCount: this.reauthAttemptCount,
-                nextLoginAttempt: 0,
-              });
+              await this.updateAuthRuntime("reauth_required");
               return;
             }
             await this.performReauth("polling-session-validation-failed");
@@ -315,29 +307,24 @@ class MihomeCloud extends utils.Adapter {
       native: {},
     });
 
-    await this.extendObject("auth.nextLoginAttempt", {
-      type: "state",
-      common: {
-        name: "Next Scheduled Login Attempt (unix ms)",
-        type: "number",
-        role: "value.time",
-        read: true,
-        write: false,
-      },
-      native: {},
-    });
-
-    await this.extendObject("auth.reauthAttempts", {
-      type: "state",
-      common: {
-        name: "Consecutive Re-authentication Attempts",
-        type: "number",
-        role: "value",
-        read: true,
-        write: false,
-      },
-      native: {},
-    });
+    // Remove deprecated auth runtime states that no longer provide user value.
+    const deprecatedAuthStates = [
+      "auth.nextLoginAttempt",
+      "auth.reauthAttempts",
+    ];
+    for (const stateId of deprecatedAuthStates) {
+      try {
+        const obj = await this.getObjectAsync(stateId);
+        if (obj) {
+          await this.delObjectAsync(stateId);
+        }
+        await this.delStateAsync(stateId);
+      } catch (error) {
+        this.log.debug(
+          `Failed to remove deprecated auth state ${stateId}: ${error.message}`,
+        );
+      }
+    }
   }
 
   async updateAuthRuntime(status, options = {}) {
@@ -347,20 +334,6 @@ class MihomeCloud extends utils.Adapter {
       }
       if (options.loginUrl !== undefined) {
         await this.setStateAsync("auth.loginUrl", options.loginUrl, true);
-      }
-      if (options.nextLoginAttempt !== undefined) {
-        await this.setStateAsync(
-          "auth.nextLoginAttempt",
-          options.nextLoginAttempt,
-          true,
-        );
-      }
-      if (options.attemptCount !== undefined) {
-        await this.setStateAsync(
-          "auth.reauthAttempts",
-          options.attemptCount,
-          true,
-        );
       }
     } catch (error) {
       this.log.debug(`Failed to update auth runtime states: ${error.message}`);
@@ -373,10 +346,7 @@ class MihomeCloud extends utils.Adapter {
     }
 
     if (this.reauthCooldownMs === 0) {
-      this.updateAuthRuntime("reauth_required", {
-        nextLoginAttempt: 0,
-        attemptCount: this.reauthAttemptCount,
-      });
+      this.updateAuthRuntime("reauth_required");
       return;
     }
 
@@ -403,10 +373,7 @@ class MihomeCloud extends utils.Adapter {
       `Next QR login attempt scheduled in ${Math.ceil(delay / 1000)}s (${reason})`,
     );
 
-    this.updateAuthRuntime("cooldown_wait", {
-      nextLoginAttempt: dueAt,
-      attemptCount: this.reauthAttemptCount,
-    });
+    this.updateAuthRuntime("cooldown_wait");
 
     this.reauthTimer = setTimeout(() => {
       this.reauthTimer = null;
@@ -424,10 +391,7 @@ class MihomeCloud extends utils.Adapter {
     }
 
     if (this.reauthCooldownMs === 0) {
-      await this.updateAuthRuntime("reauth_required", {
-        attemptCount: this.reauthAttemptCount,
-        nextLoginAttempt: 0,
-      });
+      await this.updateAuthRuntime("reauth_required");
       return false;
     }
 
@@ -447,10 +411,7 @@ class MihomeCloud extends utils.Adapter {
     this.loginInProgress = true;
     this.lastLoginAttemptTs = now;
 
-    await this.updateAuthRuntime("qr_login_running", {
-      attemptCount: this.reauthAttemptCount,
-      nextLoginAttempt: 0,
-    });
+    await this.updateAuthRuntime("qr_login_running");
 
     let success = false;
     try {
@@ -463,18 +424,11 @@ class MihomeCloud extends utils.Adapter {
       this.reauthAttemptCount = 0;
       await this.updateAuthRuntime("connected", {
         loginUrl: "",
-        attemptCount: 0,
-        nextLoginAttempt: 0,
       });
       this.log.info(`Re-authentication succeeded (${reason})`);
     } else {
       this.reauthAttemptCount += 1;
-      const nextAttemptAt =
-        this.reauthCooldownMs > 0 ? Date.now() + this.reauthCooldownMs : 0;
-      await this.updateAuthRuntime("reauth_required", {
-        attemptCount: this.reauthAttemptCount,
-        nextLoginAttempt: nextAttemptAt,
-      });
+      await this.updateAuthRuntime("reauth_required");
       if (this.reauthCooldownMs > 0) {
         this.log.warn(
           `Re-authentication failed (${reason}), next try in ${Math.ceil(this.reauthCooldownMs / 1000)}s`,

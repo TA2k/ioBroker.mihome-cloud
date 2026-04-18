@@ -31,7 +31,7 @@ In the adapter settings you can configure:
 | ------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Region**          | Select the Xiaomi Cloud region matching your Mi Home app (Germany, China, Russia, Taiwan, Singapore, USA) |
 | **Update interval** | Polling interval in minutes for device status updates via the Xiaomi Cloud API (minimum 1 minute in Admin UI) |
-| **Login cooldown**  | Minimum time between automatic login attempts (login URL creation) after an expired or failed session. `0` disables automatic login attempts. Default: `15` minutes |
+| **Login cooldown**  | Minimum time between automatic login attempts (login URL creation) after an expired or failed session. `0` disables automatic login attempts. |
 
 ## Login
 
@@ -47,7 +47,7 @@ The adapter uses a **URL-based login** (no username/password needed in the adapt
 
 When the session expires server-side, the adapter clears the invalid session and switches to re-authentication state (`mihome-cloud.0.auth.status = reauth_required`).
 
-- If **Login cooldown > 0**, automatic login attempts are started and the next scheduled retry is written to `auth.nextLoginAttempt`.
+- If **Login cooldown > 0**, automatic login attempts are started.
 - If **Login cooldown = 0**, automatic login attempts are disabled by design.
 
 The session is persisted in `auth.session` and can be reused after adapter restarts when still valid.
@@ -66,8 +66,6 @@ Authentication runtime and session states:
 
 - `auth.status` - current authentication state (for example `connected`, `qr_login_pending`, `reauth_required`, `cooldown_wait`)
 - `auth.loginUrl` - current Xiaomi login URL used for browser login
-- `auth.nextLoginAttempt` - next scheduled automatic login attempt as unix timestamp (ms)
-- `auth.reauthAttempts` - number of consecutive re-authentication attempts
 - `auth.session` - persisted cookie/session JSON for session restore
 
 Per device, the adapter creates:
