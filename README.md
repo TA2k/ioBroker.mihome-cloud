@@ -143,6 +143,7 @@ Smart scenes / automations from your Mi Home account. Set a scene state to `true
 - (lubepi) **ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` for automation and easier re-authentication handling
 - (lubepi) **ENHANCED**: Updated README sections for configuration, login flow, object tree, troubleshooting, and requirements alignment
 - (lubepi) **FIXED**: Suppress "DB closed" warnings during adapter shutdown and restart by implementing a clean shutdown flag
+- (lubepi) **ENHANCED**: Optimized error handling to prevent uncontrolled adapter crashes from expired sessions and missing null guards
 
 ### 1.0.5 (2026-04-01)
 - (lubepi) improve 401 authentication error handling and session reset

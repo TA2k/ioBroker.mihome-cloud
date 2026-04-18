@@ -125,7 +125,7 @@ class MihomeCloud extends utils.Adapter {
       accept: "*/*",
       "accept-language": "de-DE;q=1, uk-DE;q=0.9, en-DE;q=0.8",
       "x-xiaomi-protocal-flag-cli": "PROTOCAL-HTTP2",
-      "operate-common": `_region=${this.config.region}&_language=${this.local}_deviceId=${
+      "operate-common": `_region=${this.config.region}&_language=${this.local}&_deviceId=${
         this.deviceId
       }&_appVersion=10.5.201&_platform=1&_platformVersion=14.8`,
       "user-agent": "APP/com.xiaomi.mihome APPV/10.5.201",
@@ -847,8 +847,14 @@ class MihomeCloud extends utils.Adapter {
       accessKey: "IOS00026747c5acafc2",
       limit: 300,
     };
-    const { nonce, data_rc, rc4_hash_rc, signature, signedNonce } =
-      this.createBody(path, data);
+    let requestBody;
+    try {
+      requestBody = this.createBody(path, data);
+    } catch (error) {
+      this.log.error(`Failed to get device list: ${error.message}`);
+      return;
+    }
+    const { nonce, data_rc, rc4_hash_rc, signature, signedNonce } = requestBody;
 
     // Build headers with correct API headers
     const headers = await this.buildApiHeaders();
@@ -1008,7 +1014,13 @@ class MihomeCloud extends utils.Adapter {
         region: "zh",
       },
     };
-    const result = await this.genericRequest(path, data);
+    let result;
+    try {
+      result = await this.genericRequest(path, data);
+    } catch (error) {
+      // Error already logged in genericRequest
+      return;
+    }
 
     if (result && result.result && result.result.latest_info) {
       for (const plugin of result.result.latest_info) {
@@ -1691,45 +1703,42 @@ class MihomeCloud extends utils.Adapter {
   }
 
   async genericRequest(path, data) {
-    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
-      path,
-      data,
-    );
-    const cookieHeader = await this.buildCookieHeader();
+    try {
+      const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
+        path,
+        data,
+      );
+      const cookieHeader = await this.buildCookieHeader();
 
-    return await this.requestClient({
-      method: "post",
-      url: `https://${this.config.region}api.io.mi.com/app${path}`,
-      headers: {
-        ...this.header,
-        Cookie: cookieHeader,
-      },
-      params: {
-        _nonce: nonce,
-        data: data_rc,
-        rc4_hash__: rc4_hash_rc,
-        signature: signature,
-        ssecurity: this.session.ssecurity,
-      },
-      data: "",
-    })
-      .then(async (res) => {
-        try {
-          const result = JSON.parse(
-            rc4.decode(res.data).replace("&&&START&&&", ""),
-          );
-          this.log.debug(JSON.stringify(result));
-          return result;
-        } catch (error) {
-          this.log.error(error);
-          return;
-        }
-      })
-      .catch((error) => {
-        this.log.error(error);
-        this.log.error(error.stack);
-        error.response && this.log.error(JSON.stringify(error.response.data));
+      const response = await this.requestClient({
+        method: "post",
+        url: `https://${this.config.region}api.io.mi.com/app${path}`,
+        headers: {
+          ...this.header,
+          Cookie: cookieHeader,
+        },
+        params: {
+          _nonce: nonce,
+          data: data_rc,
+          rc4_hash__: rc4_hash_rc,
+          signature: signature,
+          ssecurity: this.session.ssecurity,
+        },
+        data: "",
       });
+
+      const result = JSON.parse(
+        rc4.decode(response.data).replace("&&&START&&&", ""),
+      );
+      this.log.debug(JSON.stringify(result));
+      return result;
+    } catch (error) {
+      this.log.error(`Generic request to ${path} failed: ${error.message}`);
+      if (error.response?.data) {
+        this.log.debug(`Response: ${JSON.stringify(error.response.data)}`);
+      }
+      throw error;
+    }
   }
 
   async buildApiHeaders() {
@@ -1960,10 +1969,16 @@ class MihomeCloud extends utils.Adapter {
           params: propKeys,
         };
 
-        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
-          url,
-          data,
-        );
+        let requestBody;
+        try {
+          requestBody = this.createBody(url, data);
+        } catch (error) {
+          this.log.error(
+            `Failed to poll custom properties for ${device.name}: ${error.message}`,
+          );
+          return;
+        }
+        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = requestBody;
         const cookieHeader = await this.buildCookieHeader();
 
         await this.requestClient({
@@ -2125,10 +2140,16 @@ class MihomeCloud extends utils.Adapter {
         params: [],
       };
 
-      const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
-        url,
-        data,
-      );
+      let requestBody;
+      try {
+        requestBody = this.createBody(url, data);
+      } catch (error) {
+        this.log.error(
+          `Failed to poll vacuum status for ${device.name}: ${error.message}`,
+        );
+        return;
+      }
+      const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = requestBody;
       const cookieHeader = await this.buildCookieHeader();
 
       await this.requestClient({
@@ -2329,10 +2350,14 @@ class MihomeCloud extends utils.Adapter {
           params: this.specStatusDict[device.did],
         };
         this.log.debug(`Get status for ${device.did} via spec`);
-        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
-          url,
-          data,
-        );
+        let requestBody;
+        try {
+          requestBody = this.createBody(url, data);
+        } catch (error) {
+          this.log.error(`Failed to update device specs: ${error.message}`);
+          return;
+        }
+        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = requestBody;
         const cookieHeader = await this.buildCookieHeader();
         await this.requestClient({
           method: "post",
@@ -2847,7 +2872,9 @@ class MihomeCloud extends utils.Adapter {
           command = command.split("-")[0];
         }
         if (id.split(".")[4] === "Refresh") {
-          this.updateDevicesViaSpec();
+          this.updateDevicesViaSpec().catch((error) => {
+            this.log.error(`Manual refresh failed: ${error.message}`);
+          });
           return;
         }
         //{"id":0,"method":"app_start","params":[{"clean_mop":0}]}
