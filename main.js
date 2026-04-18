@@ -2492,13 +2492,13 @@ class MihomeCloud extends utils.Adapter {
    * @returns {Promise<object>} Decrypted response data
    */
   async makeApiRequest(path, data, errorContext = "API request") {
-    const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
-      path,
-      data,
-    );
-    const cookieHeader = await this.buildCookieHeader();
-
     try {
+      const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
+        path,
+        data,
+      );
+      const cookieHeader = await this.buildCookieHeader();
+
       const res = await this.requestClient({
         method: "post",
         url: `https://${this.config.region}api.io.mi.com/app${path}`,
@@ -3058,9 +3058,13 @@ class MihomeCloud extends utils.Adapter {
         }
         // Refresh device state after command
         this.refreshTimeout = setTimeout(async () => {
-          this.log.debug("Refreshing device states after command");
-          await this.updateDevicesViaSpec();
-          await this.updateCustomStates();
+          try {
+            this.log.debug("Refreshing device states after command");
+            await this.updateDevicesViaSpec();
+            await this.updateCustomStates();
+          } catch (error) {
+            this.log.debug(`Post-command refresh failed: ${error.message}`);
+          }
         }, 10000); // 10 seconds delay
       } else {
         const resultDict = {
