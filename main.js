@@ -214,10 +214,14 @@ class MihomeCloud extends utils.Adapter {
 
     // Initial device fetch if we have a valid session
     if (this.session.ssecurity) {
-      await this.getDeviceList();
-      await this.updateDevicesViaSpec();
-      await this.updateCustomStates();
-      await this.updateVacuumStatus();
+      try {
+        await this.getDeviceList();
+        await this.updateDevicesViaSpec();
+        await this.updateCustomStates();
+        await this.updateVacuumStatus();
+      } catch (error) {
+        this.log.error(`Initial device fetch failed: ${error.message}`);
+      }
     }
 
     // ALWAYS set up polling interval, even if initial connection failed
@@ -568,11 +572,9 @@ class MihomeCloud extends utils.Adapter {
         );
       }
     } catch (error) {
-      this.log.error(`QR Login Step 1 error: ${error.message}`);
-      if (error.response) {
-        this.log.error(`Response status: ${error.response.status}`);
-        this.log.error(`Response data: ${JSON.stringify(error.response.data)}`);
-      }
+      this.log.error(
+        `QR Login Step 1 error: ${error.message}${error.response ? `. Status: ${error.response.status}, Data: ${JSON.stringify(error.response.data)}` : ""}`,
+      );
       this.log.debug(`Error stack: ${error.stack}`);
     }
 
@@ -1778,9 +1780,9 @@ class MihomeCloud extends utils.Adapter {
     );
 
     if (!cookieMap["serviceToken"]) {
-      this.log.error("buildCookieHeader: serviceToken is missing!");
-      this.log.error(`Session keys: ${Object.keys(this.session).join(", ")}`);
-      this.log.error(`Available cookies: ${Object.keys(cookieMap).join(", ")}`);
+      this.log.error(
+        `buildCookieHeader: serviceToken is missing! Session keys: ${Object.keys(this.session).join(", ")}, Available cookies: ${Object.keys(cookieMap).join(", ")}`,
+      );
     }
 
     // Build cookie header string
@@ -1791,11 +1793,9 @@ class MihomeCloud extends utils.Adapter {
 
   createBody(path, data) {
     if (!this.session.ssecurity) {
-      this.log.error(
-        "Cannot create request body: ssecurity is missing from session!",
+      throw new Error(
+        `Cannot create request body: ssecurity is missing from session! Session keys: ${Object.keys(this.session).join(", ")}`,
       );
-      this.log.error(`Session keys: ${Object.keys(this.session).join(", ")}`);
-      throw new Error("ssecurity is required but not found in session");
     }
 
     // Python does: url.split("com")[1].replace("/app/", "/")
@@ -2974,80 +2974,88 @@ class MihomeCloud extends utils.Adapter {
             }
           }
         }
-        this.log.debug(
-          `Send: ${JSON.stringify(data)} to ${deviceId} via ${url}`,
-        );
-        const { nonce, data_rc, rc4_hash_rc, signature, rc4 } = this.createBody(
-          url,
-          data,
-        );
-        const cookieHeader = await this.buildCookieHeader();
-        await this.requestClient({
-          method: "post",
-          url: `https://${this.config.region}api.io.mi.com/app${url}`,
-          headers: {
-            ...this.header,
-            Cookie: cookieHeader,
-          },
-          params: {
-            _nonce: nonce,
-            data: data_rc,
-            rc4_hash__: rc4_hash_rc,
-            signature: signature,
-            ssecurity: this.session.ssecurity,
-          },
-          data: "",
-        })
-          .then(async (res) => {
-            try {
-              res.data = JSON.parse(rc4.decode(res.data));
-              this.log.debug(JSON.stringify(res.data));
-            } catch (error) {
-              this.log.error(error);
-              return;
-            }
-
-            if (res.data.code !== 0) {
-              this.log.error("Error setting device state");
-              this.log.error(JSON.stringify(res.data));
-              return;
-            }
-            if (res.data.result && res.data.result.length > 0) {
-              res.data = res.data.result[0];
-            }
-            this.log.debug(JSON.stringify(res.data));
-            if (!res.data.result) {
-              return;
-            }
-            const result = res.data.result;
-            if (result.out) {
-              const path =
-                this.specActionsToIdDict[result.did][
-                  `${result.siid}-${result.aiid}`
-                ];
-              this.log.debug(path);
-              const stateObject = await this.getObjectAsync(path);
-              if (stateObject && stateObject.native.out) {
-                const out = stateObject.native.out;
-                for (const outItem of out) {
-                  const index = out.indexOf(outItem);
-                  const outPath =
-                    this.specPropsToIdDict[result.did][
-                      `${result.siid}-${outItem}`
-                    ];
-                  await this.setStateAsync(outPath, result.out[index], true);
-                  this.log.info(`Set ${outPath} to ${result.out[index]}`);
-                }
-              } else {
-                this.log.debug(JSON.stringify(result.out));
-              }
-            }
+        try {
+          this.log.debug(
+            `Send: ${JSON.stringify(data)} to ${deviceId} via ${url}`,
+          );
+          const { nonce, data_rc, rc4_hash_rc, signature, rc4 } =
+            this.createBody(url, data);
+          const cookieHeader = await this.buildCookieHeader();
+          await this.requestClient({
+            method: "post",
+            url: `https://${this.config.region}api.io.mi.com/app${url}`,
+            headers: {
+              ...this.header,
+              Cookie: cookieHeader,
+            },
+            params: {
+              _nonce: nonce,
+              data: data_rc,
+              rc4_hash__: rc4_hash_rc,
+              signature: signature,
+              ssecurity: this.session.ssecurity,
+            },
+            data: "",
           })
-          .catch(async (error) => {
-            this.log.error(error);
-            error.response &&
-              this.log.error(JSON.stringify(error.response.data));
-          });
+            .then(async (res) => {
+              try {
+                res.data = JSON.parse(rc4.decode(res.data));
+                this.log.debug(JSON.stringify(res.data));
+              } catch (error) {
+                this.log.error(error);
+                return;
+              }
+
+              if (res.data.code !== 0) {
+                this.log.error(
+                  `Error setting state ${id}: ${res.data.message || "unknown status"}`,
+                );
+                this.log.error(JSON.stringify(res.data));
+                return;
+              }
+
+              if (res.data.result && res.data.result.length > 0) {
+                res.data = res.data.result[0];
+              }
+              this.log.debug(JSON.stringify(res.data));
+              if (!res.data.result) {
+                return;
+              }
+              const result = res.data.result;
+              if (result.out) {
+                const path =
+                  this.specActionsToIdDict[result.did][
+                    `${result.siid}-${result.aiid}`
+                  ];
+                this.log.debug(path);
+                const stateObject = await this.getObjectAsync(path);
+                if (stateObject && stateObject.native.out) {
+                  const out = stateObject.native.out;
+                  for (const outItem of out) {
+                    const index = out.indexOf(outItem);
+                    const outPath =
+                      this.specPropsToIdDict[result.did][
+                        `${result.siid}-${outItem}`
+                      ];
+                    await this.setStateAsync(outPath, result.out[index], true);
+                    this.log.info(`Set ${outPath} to ${result.out[index]}`);
+                  }
+                } else {
+                  this.log.debug(JSON.stringify(result.out));
+                }
+              }
+            })
+            .catch((error) => {
+              this.log.error(error);
+              this.log.error(error.stack);
+              error.response &&
+                this.log.error(JSON.stringify(error.response.data));
+            });
+        } catch (error) {
+          this.log.error(
+            `Error processing state change for ${id}: ${error.message}`,
+          );
+        }
         // Refresh device state after command
         this.refreshTimeout = setTimeout(async () => {
           this.log.debug("Refreshing device states after command");
