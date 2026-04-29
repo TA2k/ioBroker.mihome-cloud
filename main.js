@@ -2404,6 +2404,12 @@ class MihomeCloud extends utils.Adapter {
               return;
             }
             this.log.debug(JSON.stringify(res.data));
+            if (!this.specPropsToIdDict[device.did]) {
+              this.log.debug(
+                `No spec properties dictionary found for ${device.did}`,
+              );
+              return;
+            }
             for (const element of res.data.result) {
               const path =
                 this.specPropsToIdDict[device.did][
@@ -3070,6 +3076,12 @@ class MihomeCloud extends utils.Adapter {
               }
               const result = res.data.result;
               if (result.out) {
+                if (!this.specActionsToIdDict[result.did]) {
+                  this.log.debug(
+                    `No spec actions dictionary found for ${result.did}`,
+                  );
+                  return;
+                }
                 const path =
                   this.specActionsToIdDict[result.did][
                     `${result.siid}-${result.aiid}`
@@ -3080,6 +3092,12 @@ class MihomeCloud extends utils.Adapter {
                   const out = stateObject.native.out;
                   for (const outItem of out) {
                     const index = out.indexOf(outItem);
+                    if (!this.specPropsToIdDict[result.did]) {
+                      this.log.debug(
+                        `No spec properties dictionary found for ${result.did}`,
+                      );
+                      continue;
+                    }
                     const outPath =
                       this.specPropsToIdDict[result.did][
                         `${result.siid}-${outItem}`
