@@ -388,7 +388,7 @@ class MihomeCloud extends utils.Adapter {
 
     this.updateAuthRuntime("cooldown_wait");
 
-    this.reauthTimer = setTimeout(() => {
+    this.reauthTimer = this.setTimeout(() => {
       this.reauthTimer = null;
       this.reauthScheduledAt = 0;
 
@@ -723,7 +723,7 @@ class MihomeCloud extends utils.Adapter {
           this.log.error(`Long polling error: ${error.message}`);
           this.log.debug(`Error details: ${JSON.stringify(error)}`);
           // Don't fail immediately on network errors, keep trying
-          await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+          await new Promise((resolve) => this.setTimeout(resolve, 2000)); // Wait 2 seconds before retry
           continue;
         }
       }
@@ -3122,7 +3122,7 @@ class MihomeCloud extends utils.Adapter {
           );
         }
         // Refresh device state after command
-        this.refreshTimeout = setTimeout(async () => {
+        this.refreshTimeout = this.setTimeout(async () => {
           try {
             this.log.debug("Refreshing device states after command");
             await this.updateDevicesViaSpec();
