@@ -1,197 +1,192 @@
 {
-  "common": {
-    "name": "mihome-cloud",
-    "version": "1.0.6",
-    "news": {
-      "1.0.6": {
-        "en": "**NEW**: Added admin option to block additional automatic runtime login attempts to reduce log spam\n**ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` for automation and easier re-authentication handling\n**ENHANCED**: Updated README\n**FIXED**: Suppress \"DB closed\" warnings during adapter shutdown and restart by implementing a clean shutdown flag\n**ENHANCED**: Optimized error handling to prevent uncontrolled adapter crashes from expired sessions and missing null guards",
-        "de": "**NEW**: Admin-Option hinzugefügt, um zusätzliche automatische Laufzeit-Anmeldeversuche zu blockieren, um Protokoll Spam zu reduzieren\n**ENHANCED**: Ausgestellte Xiaomi-Login-URL in `auth.loginUrl` zur Automatisierung und einfacheren Neuauthentifizierung\n**ENHANCED**: Aktualisiert\n**FIXED**: Suppress \"DB geschlossen\" Warnungen während der Adapterabschaltung und Neustart durch Implementierung einer sauberen Abschaltfahne\n**ENHANCED**: Optimierte Fehlerbehandlung, um unkontrollierte Adapter-Abstürze von abgelaufenen Sitzungen und fehlenden Nullschutzgeräten zu verhindern",
-        "ru": "**Новое**: Добавлена опция администратора для блокировки дополнительных автоматических попыток входа во время выполнения для уменьшения спама в журнале\n** ВНИМАНИЕ**: Обнаруженный URL-адрес входа Xiaomi в «auth.loginUrl» для автоматизации и более простой обработки аутентификации\n**Обновлено**: обновлено\n** FIXED**: Подавить предупреждения о «закрытии DB» во время отключения и перезапуска адаптера, внедрив чистый флаг отключения\n** УВЕДОМЛЕНИЕ**: Оптимизированная обработка ошибок для предотвращения неконтролируемых аварий адаптера от просроченных сеансов и отсутствия нулевых защитных механизмов",
-        "pt": "**NOVA**: Opção de administrador adicionada para bloquear as tentativas adicionais de login automático em tempo de execução para reduzir o spam log\n**ENHANCED**: URL de login Xiaomi exposto em `auth.loginUrl` para automação e manuseio de re-autenticação mais fácil\n** README Actualizado\n**FIXED**: Suprimir avisos \"DB fechado\" durante o desligamento do adaptador e reiniciar implementando uma bandeira de desligamento limpa\n**ENHANCED**: Manuseamento otimizado de erros para evitar falhas descontroladas do adaptador de sessões expiradas e guardas nulos faltando",
-        "nl": "NIEUW**: Toegevoegd admin optie om extra automatische runtime login pogingen te verminderen log spam blokkeren\n**ENHANKELIJK**: Exposed Xiaomi login URL in \n**GENOMEN**: Bijgewerkt LEES\n**FIXED**: Suppress \"DB gesloten\" waarschuwingen tijdens het afsluiten van de adapter en herstart door het implementeren van een schone uitschakeling vlag\n**ENHANCED**: Geoptimaliseerde foutafhandeling om ongecontroleerde adaptercrashes te voorkomen van verlopen sessies en ontbrekende nulbewakers",
-        "fr": "**NOUVEAU**: Ajout d'une option d'administration pour bloquer la connexion automatique supplémentaire d'exécution tente de réduire le log spam\n**ENHANCED**: URL de connexion Xiaomi exposée dans `auth.loginUrl` pour l'automatisation et une gestion plus facile de la réauthentification\n**ÉCHANGE**: MISE À JOUR DU README\n**FIXED**: Supprimer les avertissements \"DB fermé\" pendant l'arrêt et le redémarrage de l'adaptateur en mettant en œuvre un drapeau d'arrêt propre\n**ENHANCED**: Gestion optimisée des erreurs pour empêcher les pannes d'adaptateur non contrôlées à partir de sessions expirées et manque de gardes nuls",
-        "it": "# Aggiunta opzione admin per bloccare ulteriori tentativi di accesso automatico runtime per ridurre lo spam log\n**ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` per l'automazione e la gestione più facile di ri-authentication\n**ENHANCED**: Aggiornamento\n**FIXED**: Suppress \"DB chiuso\" avvisi durante l'arresto dell'adattatore e riavviare implementando una bandiera di chiusura pulita\n**ENHANCED**: Gestione degli errori ottimizzata per evitare crash dell'adattatore non controllati da sessioni scadute e null guard mancanti",
-        "es": "**NEW**: Añadido opción de administración para bloquear intentos adicionales de inicio de sesión automático de tiempo de ejecución para reducir el spam log\n**ENHANCED**: Exposed Xiaomi login URL en `auth.loginUrl` para automatización y manejo de re-authenticación más fácil\n**ENHANCED**: Actualizado README\n**FIXED**: Suppress \"DB closed\" warnings during adapter shutdown and restart by implementing a clean shutdown flag\n**ENHANCED**: Manejo optimizado de errores para evitar que el adaptador no controlado se estrelle de las sesiones caducadas y los guardias nulos desaparecidos",
-        "pl": "* *NEW* *: Dodano opcję admin, aby zablokować dodatkowe próby automatycznego logowania w czasie pracy, aby zmniejszyć spam logowania \n* *ENHANCED* *: Exposed Xiaomi login URL in 'auth.loginUrl' for automatyzacja i łatwiejsza obsługa uwierzytelniania \n/ Aktualizacja README\n* *FIXED* *: Supress \"DB closed\" ostrzeżenia podczas zamykania adaptera i restart poprzez wdrożenie czystej flagi zamknięcia \n* *ENHANCED* *: Zoptymalizowana obsługa błędów, aby zapobiec niekontrolowanemu awarii adaptera przed przeterminowanymi sesjami i brakującymi osłonami jąder ",
-        "uk": "**NEW***: Додано опцію адміністратора для блокування додаткових автоматичних спроб входу в систему runtime для зменшення спаму\n**ENHANCED***: Запроваджено URL-адресу входу Xiaomi в `auth.loginUrl` для автоматизації та полегшення переоснащення\n**ENHANCED**: Оновлено\n**FIXED***: Suppress \"DB закритих\" попередження під час відключення адаптера та перезапуску, запровадивши чистий прапор відключення\n**ENHANCED***: Оптимізоване поводження з похибками для запобігання неконтрольованих аварійних з’єднань адаптерів з розірваних сеансів та відсутніх охоронців",
-        "zh-cn": "** NEW**: 添加管理员选项以屏蔽额外的自动运行时间登录尝试以减少日志垃圾邮件\n**ENHANCED**:在`auth.loginUrl'中曝光了小米登录URL,用于自动化和更容易的再认证处理\n** 已更新的读本\n** FIXED**:在适配器关闭期间通过实施干净的关闭旗子来压制“关闭的DB”警告并重新启动\n** ENHANCED**:优化错误处理,防止因过期会话和缺失的无效卫士而导致无控制的适配器崩溃"
-      },
-      "1.0.5": {
-        "en": "improve 401 authentication error handling and session reset\nvalidate and limit user configurable update interval\nupdate dependencies to address vulnerabilities",
-        "de": "401 authentifizierungsfehlerbehandlung und session-reset verbessern\nvalidieren und begrenzen sie das konfigurierbare updateintervall des benutzers\ndie abhängigkeiten zu aktualisieren, um schwachstellen zu beheben",
-        "ru": "улучшение 401 обработки ошибок аутентификации и сброс сеанса\nпроверять и ограничивать настраиваемый пользователем интервал обновления\nобновление зависимостей для устранения уязвимостей",
-        "pt": "melhorar o tratamento de erros de autenticação 401 e repor a sessão\nvalidar e limitar o intervalo de atualização configurável pelo usuário\natualizar dependências para resolver vulnerabilidades",
-        "nl": "het verbeteren van 401 authenticatiefoutafhandeling en sessieherstel\nvalideren en beperken van gebruikers configureerbare update-interval\nafhankelijkheden bijwerken om kwetsbaarheden aan te pakken",
-        "fr": "améliorer le traitement des erreurs d'authentification 401 et réinitialiser la session\nvalider et limiter l'intervalle de mise à jour configurable de l'utilisateur\nmettre à jour les dépendances pour remédier aux vulnérabilités",
-        "it": "migliorare la gestione degli errori di autenticazione 401 e il ripristino della sessione\nconvalidare e limitare l'intervallo di aggiornamento configurabile dell'utente\naggiornare le dipendenze per affrontare le vulnerabilità",
-        "es": "mejorar 401 tratamiento de errores de autenticación y reiniciar sesión\nvalidar y limitar el intervalo de actualización configurable del usuario\nactualizar las dependencias para hacer frente a las vulnerabilidades",
-        "pl": "ulepszenie obsługi błędów uwierzytelniania 401 i resetowania sesji\nwalidacja i ograniczenie konfigurowalnego okresu aktualizacji użytkownika\naktualizacja zależności w celu usunięcia słabych punktów",
-        "uk": "поліпшення 401 автентифікації помилок обробки та скидання сеансів\nвалідувати і обмежити інтервал налаштування користувачів\nоновлення залежності для адреси вразливостей",
-        "zh-cn": "改进401 认证错误处理和会话重设\n验证和限制用户可配置的更新间隔\n更新解决脆弱性的依赖性"
-      },
-      "1.0.4": {
-        "en": "Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance",
-        "de": "Wartungsupdate: Konsolidierte Changelog- und Fix-Repository-Metadaten für bessere Standards Compliance",
-        "ru": "Обновление технического обслуживания: консолидированный журнал изменений и фиксированные метаданные хранилища для лучшего соответствия стандартам",
-        "pt": "Atualização de manutenção: metadados consolidados do changelog e do repositório fixo para melhor conformidade com padrões",
-        "nl": "Onderhoudsupdate: Geconsolideerde veranderingslog en vaste repository metadata voor betere normen",
-        "fr": "Mise à jour: Mise à jour des métadonnées consolidées de changement et de dépôt fixe pour une meilleure conformité aux normes",
-        "it": "Aggiornamento della manutenzione: metadati di changelog e repository fissi consolidati per una migliore conformità agli standard",
-        "es": "Actualización de mantenimiento: Metadatos de repositorios consolidados y de repositorio fijo para un mejor cumplimiento de normas",
-        "pl": "Aktualizacja utrzymania: Skonsolidowany zmiennokształtny i stałe metadane repozytorium dla lepszej zgodności norm",
-        "uk": "Оновлення технічного обслуговування: Консолідований блок змін і виправлений репозиторій метаданих для кращого дотримання стандартів",
-        "zh-cn": "更新维护:合并变更日志和固定存储器元数据,以更好地遵守标准"
-      },
-      "1.0.3": {
-        "en": "Major rewrite including:\n- New Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)\n- Environment properties (Temperature, Humidity)\n- QR-code login flow\n- Improved error handling\n- Migration to external i18n files and Node.js 20+",
-        "de": "Vollständige Überarbeitung inklusive:\n- Neue Xiaomi-Gerätemodelle (Luftreiniger 4er Serie, neue Ventilatoren/Heizungen, Saugroboter)\n- Umgebungseigenschaften (Temperatur, Luftfeuchtigkeit)\n- QR-Code Login-Verfahren\n- Verbesserte Fehlerbehandlung\n- Migration auf externe i18n-Dateien und Node.js 20+",
-        "ru": "Крупная перезапись, включая:\n- Новые модели устройств Xiaomi (серия Air Purifier 4, новые вентиляторы / нагреватели, роботы-пылесосы)\n- Свойства среды (Температура, Влажность)\n- Вход по QR-коду\n- Улучшенная обработка ошибок\n- Миграция на внешние i18n файлы и Node.js 20+",
-        "pt": "Grande reescrita incluindo:\n- Novos modelos de dispositivos Xiaomi (Air Purifiers 4 série, ventiladores/aquecedores mais recentes, vácuos de robôs)\n- Propriedades de ambiente (Temperatura, Humidade)\n- Fluxo de login por código QR\n- Tratamento de erros aprimorado\n- Migração para arquivos i18n externos e Node.js 20+",
-        "nl": "Grote herschrijving inclusief:\n- Nieuwe Xiaomi apparaatmodellen (Air Purifiers 4-serie, nieuwere ventilatoren/verwarmers, robotstofzuigers)\n- Omgevingseigenschappen (Temperatuur, Vochtigheid)\n- QR-code inlogstroom\n- Verbeterde foutafhandeling\n- Migratie naar externe i18n-bestanden en Node.js 20+",
-        "fr": "Réécriture majeure incluant :\n- Nouveaux modèles d'appareils Xiaomi (série Air Purifiers 4, ventilateurs/chauffages plus récents, aspirateurs robots)\n- Propriétés de l'environnement (température, humidité)\n- Flux de connexion par code QR\n- Gestion des erreurs améliorée\n- Migration vers des fichiers i18n externes et Node.js 20+",
-        "it": "Riscaldamento maggiore tra cui:\n- Nuovi modelli di dispositivi Xiaomi (serie Air Purifiers 4, ventilatori/riscaldatori più recenti, robot aspirapolvere)\n- Proprietà dell'ambiente (Temperatura, Umidità)\n- Flusso di login QR-code\n- Gestione degli errori migliorata\n- Migrazione a file i18n esterni e Node.js 20+",
-        "es": "Reescritura importante que incluye:\n- Nuevos modelos de dispositivos Xiaomi (serie Air Purifiers 4, nuevos ventiladores/calentadores, robots aspiradores)\n- Propiedades del entorno (Temperatura, Humedad)\n- Flujo de inicio de sesión por código QR\n- Manejo de errores mejorado\n- Migración a archivos i18n externos y Node.js 20+",
-        "pl": "Główna przeróbka, w tym:\n- Nowe modele urządzeń Xiaomi (seria Air Purifier 4, nowsze wentylatory/grzejniki, odkurzacze automatyczne)\n- Właściwości środowiska (Temperatura, Wilgotność)\n- Logowanie za pomocą kodu QR\n- Ulepszona obsługa błędów\n- Migracja do zewnętrznych plików i18n i Node.js 20+",
-        "uk": "Великий перепис, включаючи:\n- Нові моделі пристроїв Xiaomi (серія Air Purifier 4, нові вентилятори / обігрівачі, роботи-пилососи)\n- Властивості навколишнього середовища (Температура, Вологість)\n- Вхід за QR-кодом\n- Покращена обробка помилок\n- Міграція на зовнішні i18n файли та Node.js 20+",
-        "zh-cn": "重大重写包括:\n- 新型小米设备型号(空气净化器4系列,更新的风扇/加热器,机器人真空)\n- 环境属性( 温度、 湿度)\n- QR码登录流程\n- 改进的错误处理\n- 迁移到外部 i18n 文件和 Node.js 20+"
-      },
-      "0.2.2": {
-        "en": "Minor improvments with device handling",
-        "de": "Verbesserung bei der Geräteerkennung",
-        "ru": "Незначительные улучшения в работе с устройствами.",
-        "pt": "Pequenas melhorias no manuseio do dispositivo",
-        "nl": "Kleine verbeteringen in de omgang met apparaten",
-        "fr": "Améliorations mineures de la gestion des appareils",
-        "it": "Piccoli miglioramenti nella gestione del dispositivo",
-        "es": "Mejoras menores en el manejo del dispositivo.",
-        "pl": "Drobne ulepszenia w obsłudze urządzenia",
-        "uk": "Незначні покращення в роботі з пристроєм",
-        "zh-cn": "设备处理方面的微小改进"
-      },
-      "0.2.1": {
-        "en": "Fix login. Check Log after starting Adapter",
-        "de": "Login Problem behoben. Bitte überprüfe den Log nach dem Starten des Adapters",
-        "ru": "Исправьте вход. Проверьте журнал после запуска адаптера",
-        "pt": "Corrija o login. Verifique o log após iniciar o adaptador",
-        "nl": "Inloggen repareren. Controleer Log na het starten van Adapter",
-        "fr": "Correction de la connexion. Vérifier le journal après le démarrage de l'adaptateur",
-        "it": "Correggi l'accesso. Controllare il registro dopo aver avviato l'adattatore",
-        "es": "Arreglar el inicio de sesión. Verificar registro después de iniciar el adaptador",
-        "pl": "Napraw logowanie. Sprawdź dziennik po uruchomieniu adaptera",
-        "uk": "Виправте логін. Перевірте журнал після запуску адаптера",
-        "zh-cn": "修复登录问题。启动Adapter后查看Log"
-      },
-      "0.1.1": {
-        "en": "Bugfixes",
-        "de": "Fehlerbehebungen",
-        "ru": "Исправления ошибок",
-        "pt": "Correções de bugs",
-        "nl": "Bugfixes",
-        "fr": "Corrections de bugs",
-        "it": "Correzioni di bug",
-        "es": "Correcciones de errores",
-        "pl": "Poprawki błędów",
-        "uk": "Виправлення помилок",
-        "zh-cn": "错误修正"
-      }
+    "common": {
+        "name": "mihome-cloud",
+        "version": "1.0.6",
+        "news": {
+            "1.0.6": {
+                "en": "**NEW**: Added admin option to block additional automatic runtime login attempts to reduce log spam\n**ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` for automation and easier re-authentication handling\n**ENHANCED**: Updated README\n**FIXED**: Suppress \"DB closed\" warnings during adapter shutdown and restart by implementing a clean shutdown flag\n**ENHANCED**: Optimized error handling to prevent uncontrolled adapter crashes from expired sessions and missing null guards",
+                "de": "**NEW**: Admin-Option hinzugefügt, um zusätzliche automatische Laufzeit-Anmeldeversuche zu blockieren, um Protokoll Spam zu reduzieren\n**ENHANCED**: Ausgestellte Xiaomi-Login-URL in `auth.loginUrl` zur Automatisierung und einfacheren Neuauthentifizierung\n**ENHANCED**: Aktualisiert\n**FIXED**: Suppress \"DB geschlossen\" Warnungen während der Adapterabschaltung und Neustart durch Implementierung einer sauberen Abschaltfahne\n**ENHANCED**: Optimierte Fehlerbehandlung, um unkontrollierte Adapter-Abstürze von abgelaufenen Sitzungen und fehlenden Nullschutzgeräten zu verhindern",
+                "ru": "**Новое**: Добавлена опция администратора для блокировки дополнительных автоматических попыток входа во время выполнения для уменьшения спама в журнале\n** ВНИМАНИЕ**: Обнаруженный URL-адрес входа Xiaomi в «auth.loginUrl» для автоматизации и более простой обработки аутентификации\n**Обновлено**: обновлено\n** FIXED**: Подавить предупреждения о «закрытии DB» во время отключения и перезапуска адаптера, внедрив чистый флаг отключения\n** УВЕДОМЛЕНИЕ**: Оптимизированная обработка ошибок для предотвращения неконтролируемых аварий адаптера от просроченных сеансов и отсутствия нулевых защитных механизмов",
+                "pt": "**NOVA**: Opção de administrador adicionada para bloquear as tentativas adicionais de login automático em tempo de execução para reduzir o spam log\n**ENHANCED**: URL de login Xiaomi exposto em `auth.loginUrl` para automação e manuseio de re-autenticação mais fácil\n** README Actualizado\n**FIXED**: Suprimir avisos \"DB fechado\" durante o desligamento do adaptador e reiniciar implementando uma bandeira de desligamento limpa\n**ENHANCED**: Manuseamento otimizado de erros para evitar falhas descontroladas do adaptador de sessões expiradas e guardas nulos faltando",
+                "nl": "NIEUW**: Toegevoegd admin optie om extra automatische runtime login pogingen te verminderen log spam blokkeren\n**ENHANKELIJK**: Exposed Xiaomi login URL in \n**GENOMEN**: Bijgewerkt LEES\n**FIXED**: Suppress \"DB gesloten\" waarschuwingen tijdens het afsluiten van de adapter en herstart door het implementeren van een schone uitschakeling vlag\n**ENHANCED**: Geoptimaliseerde foutafhandeling om ongecontroleerde adaptercrashes te voorkomen van verlopen sessies en ontbrekende nulbewakers",
+                "fr": "**NOUVEAU**: Ajout d'une option d'administration pour bloquer la connexion automatique supplémentaire d'exécution tente de réduire le log spam\n**ENHANCED**: URL de connexion Xiaomi exposée dans `auth.loginUrl` pour l'automatisation et une gestion plus facile de la réauthentification\n**ÉCHANGE**: MISE À JOUR DU README\n**FIXED**: Supprimer les avertissements \"DB fermé\" pendant l'arrêt et le redémarrage de l'adaptateur en mettant en œuvre un drapeau d'arrêt propre\n**ENHANCED**: Gestion optimisée des erreurs pour empêcher les pannes d'adaptateur non contrôlées à partir de sessions expirées et manque de gardes nuls",
+                "it": "# Aggiunta opzione admin per bloccare ulteriori tentativi di accesso automatico runtime per ridurre lo spam log\n**ENHANCED**: Exposed Xiaomi login URL in `auth.loginUrl` per l'automazione e la gestione più facile di ri-authentication\n**ENHANCED**: Aggiornamento\n**FIXED**: Suppress \"DB chiuso\" avvisi durante l'arresto dell'adattatore e riavviare implementando una bandiera di chiusura pulita\n**ENHANCED**: Gestione degli errori ottimizzata per evitare crash dell'adattatore non controllati da sessioni scadute e null guard mancanti",
+                "es": "**NEW**: Añadido opción de administración para bloquear intentos adicionales de inicio de sesión automático de tiempo de ejecución para reducir el spam log\n**ENHANCED**: Exposed Xiaomi login URL en `auth.loginUrl` para automatización y manejo de re-authenticación más fácil\n**ENHANCED**: Actualizado README\n**FIXED**: Suppress \"DB closed\" warnings during adapter shutdown and restart by implementing a clean shutdown flag\n**ENHANCED**: Manejo optimizado de errores para evitar que el adaptador no controlado se estrelle de las sesiones caducadas y los guardias nulos desaparecidos",
+                "pl": "* *NEW* *: Dodano opcję admin, aby zablokować dodatkowe próby automatycznego logowania w czasie pracy, aby zmniejszyć spam logowania \n* *ENHANCED* *: Exposed Xiaomi login URL in 'auth.loginUrl' for automatyzacja i łatwiejsza obsługa uwierzytelniania \n/ Aktualizacja README\n* *FIXED* *: Supress \"DB closed\" ostrzeżenia podczas zamykania adaptera i restart poprzez wdrożenie czystej flagi zamknięcia \n* *ENHANCED* *: Zoptymalizowana obsługa błędów, aby zapobiec niekontrolowanemu awarii adaptera przed przeterminowanymi sesjami i brakującymi osłonami jąder ",
+                "uk": "**NEW***: Додано опцію адміністратора для блокування додаткових автоматичних спроб входу в систему runtime для зменшення спаму\n**ENHANCED***: Запроваджено URL-адресу входу Xiaomi в `auth.loginUrl` для автоматизації та полегшення переоснащення\n**ENHANCED**: Оновлено\n**FIXED***: Suppress \"DB закритих\" попередження під час відключення адаптера та перезапуску, запровадивши чистий прапор відключення\n**ENHANCED***: Оптимізоване поводження з похибками для запобігання неконтрольованих аварійних з’єднань адаптерів з розірваних сеансів та відсутніх охоронців",
+                "zh-cn": "** NEW**: 添加管理员选项以屏蔽额外的自动运行时间登录尝试以减少日志垃圾邮件\n**ENHANCED**:在`auth.loginUrl'中曝光了小米登录URL,用于自动化和更容易的再认证处理\n** 已更新的读本\n** FIXED**:在适配器关闭期间通过实施干净的关闭旗子来压制“关闭的DB”警告并重新启动\n** ENHANCED**:优化错误处理,防止因过期会话和缺失的无效卫士而导致无控制的适配器崩溃"
+            },
+            "1.0.5": {
+                "en": "improve 401 authentication error handling and session reset\nvalidate and limit user configurable update interval\nupdate dependencies to address vulnerabilities",
+                "de": "401 authentifizierungsfehlerbehandlung und session-reset verbessern\nvalidieren und begrenzen sie das konfigurierbare updateintervall des benutzers\ndie abhängigkeiten zu aktualisieren, um schwachstellen zu beheben",
+                "ru": "улучшение 401 обработки ошибок аутентификации и сброс сеанса\nпроверять и ограничивать настраиваемый пользователем интервал обновления\nобновление зависимостей для устранения уязвимостей",
+                "pt": "melhorar o tratamento de erros de autenticação 401 e repor a sessão\nvalidar e limitar o intervalo de atualização configurável pelo usuário\natualizar dependências para resolver vulnerabilidades",
+                "nl": "het verbeteren van 401 authenticatiefoutafhandeling en sessieherstel\nvalideren en beperken van gebruikers configureerbare update-interval\nafhankelijkheden bijwerken om kwetsbaarheden aan te pakken",
+                "fr": "améliorer le traitement des erreurs d'authentification 401 et réinitialiser la session\nvalider et limiter l'intervalle de mise à jour configurable de l'utilisateur\nmettre à jour les dépendances pour remédier aux vulnérabilités",
+                "it": "migliorare la gestione degli errori di autenticazione 401 e il ripristino della sessione\nconvalidare e limitare l'intervallo di aggiornamento configurabile dell'utente\naggiornare le dipendenze per affrontare le vulnerabilità",
+                "es": "mejorar 401 tratamiento de errores de autenticación y reiniciar sesión\nvalidar y limitar el intervalo de actualización configurable del usuario\nactualizar las dependencias para hacer frente a las vulnerabilidades",
+                "pl": "ulepszenie obsługi błędów uwierzytelniania 401 i resetowania sesji\nwalidacja i ograniczenie konfigurowalnego okresu aktualizacji użytkownika\naktualizacja zależności w celu usunięcia słabych punktów",
+                "uk": "поліпшення 401 автентифікації помилок обробки та скидання сеансів\nвалідувати і обмежити інтервал налаштування користувачів\nоновлення залежності для адреси вразливостей",
+                "zh-cn": "改进401 认证错误处理和会话重设\n验证和限制用户可配置的更新间隔\n更新解决脆弱性的依赖性"
+            },
+            "1.0.4": {
+                "en": "Maintenance update: Consolidated changelog and fixed repository metadata for better standards compliance",
+                "de": "Wartungsupdate: Konsolidierte Changelog- und Fix-Repository-Metadaten für bessere Standards Compliance",
+                "ru": "Обновление технического обслуживания: консолидированный журнал изменений и фиксированные метаданные хранилища для лучшего соответствия стандартам",
+                "pt": "Atualização de manutenção: metadados consolidados do changelog e do repositório fixo para melhor conformidade com padrões",
+                "nl": "Onderhoudsupdate: Geconsolideerde veranderingslog en vaste repository metadata voor betere normen",
+                "fr": "Mise à jour: Mise à jour des métadonnées consolidées de changement et de dépôt fixe pour une meilleure conformité aux normes",
+                "it": "Aggiornamento della manutenzione: metadati di changelog e repository fissi consolidati per una migliore conformità agli standard",
+                "es": "Actualización de mantenimiento: Metadatos de repositorios consolidados y de repositorio fijo para un mejor cumplimiento de normas",
+                "pl": "Aktualizacja utrzymania: Skonsolidowany zmiennokształtny i stałe metadane repozytorium dla lepszej zgodności norm",
+                "uk": "Оновлення технічного обслуговування: Консолідований блок змін і виправлений репозиторій метаданих для кращого дотримання стандартів",
+                "zh-cn": "更新维护:合并变更日志和固定存储器元数据,以更好地遵守标准"
+            },
+            "1.0.3": {
+                "en": "Major rewrite including:\n- New Xiaomi device models (Air Purifiers 4 series, newer fans/heaters, robot vacuums)\n- Environment properties (Temperature, Humidity)\n- QR-code login flow\n- Improved error handling\n- Migration to external i18n files and Node.js 20+",
+                "de": "Vollständige Überarbeitung inklusive:\n- Neue Xiaomi-Gerätemodelle (Luftreiniger 4er Serie, neue Ventilatoren/Heizungen, Saugroboter)\n- Umgebungseigenschaften (Temperatur, Luftfeuchtigkeit)\n- QR-Code Login-Verfahren\n- Verbesserte Fehlerbehandlung\n- Migration auf externe i18n-Dateien und Node.js 20+",
+                "ru": "Крупная перезапись, включая:\n- Новые модели устройств Xiaomi (серия Air Purifier 4, новые вентиляторы / нагреватели, роботы-пылесосы)\n- Свойства среды (Температура, Влажность)\n- Вход по QR-коду\n- Улучшенная обработка ошибок\n- Миграция на внешние i18n файлы и Node.js 20+",
+                "pt": "Grande reescrita incluindo:\n- Novos modelos de dispositivos Xiaomi (Air Purifiers 4 série, ventiladores/aquecedores mais recentes, vácuos de robôs)\n- Propriedades de ambiente (Temperatura, Humidade)\n- Fluxo de login por código QR\n- Tratamento de erros aprimorado\n- Migração para arquivos i18n externos e Node.js 20+",
+                "nl": "Grote herschrijving inclusief:\n- Nieuwe Xiaomi apparaatmodellen (Air Purifiers 4-serie, nieuwere ventilatoren/verwarmers, robotstofzuigers)\n- Omgevingseigenschappen (Temperatuur, Vochtigheid)\n- QR-code inlogstroom\n- Verbeterde foutafhandeling\n- Migratie naar externe i18n-bestanden en Node.js 20+",
+                "fr": "Réécriture majeure incluant :\n- Nouveaux modèles d'appareils Xiaomi (série Air Purifiers 4, ventilateurs/chauffages plus récents, aspirateurs robots)\n- Propriétés de l'environnement (température, humidité)\n- Flux de connexion par code QR\n- Gestion des erreurs améliorée\n- Migration vers des fichiers i18n externes et Node.js 20+",
+                "it": "Riscaldamento maggiore tra cui:\n- Nuovi modelli di dispositivi Xiaomi (serie Air Purifiers 4, ventilatori/riscaldatori più recenti, robot aspirapolvere)\n- Proprietà dell'ambiente (Temperatura, Umidità)\n- Flusso di login QR-code\n- Gestione degli errori migliorata\n- Migrazione a file i18n esterni e Node.js 20+",
+                "es": "Reescritura importante que incluye:\n- Nuevos modelos de dispositivos Xiaomi (serie Air Purifiers 4, nuevos ventiladores/calentadores, robots aspiradores)\n- Propiedades del entorno (Temperatura, Humedad)\n- Flujo de inicio de sesión por código QR\n- Manejo de errores mejorado\n- Migración a archivos i18n externos y Node.js 20+",
+                "pl": "Główna przeróbka, w tym:\n- Nowe modele urządzeń Xiaomi (seria Air Purifier 4, nowsze wentylatory/grzejniki, odkurzacze automatyczne)\n- Właściwości środowiska (Temperatura, Wilgotność)\n- Logowanie za pomocą kodu QR\n- Ulepszona obsługa błędów\n- Migracja do zewnętrznych plików i18n i Node.js 20+",
+                "uk": "Великий перепис, включаючи:\n- Нові моделі пристроїв Xiaomi (серія Air Purifier 4, нові вентилятори / обігрівачі, роботи-пилососи)\n- Властивості навколишнього середовища (Температура, Вологість)\n- Вхід за QR-кодом\n- Покращена обробка помилок\n- Міграція на зовнішні i18n файли та Node.js 20+",
+                "zh-cn": "重大重写包括:\n- 新型小米设备型号(空气净化器4系列,更新的风扇/加热器,机器人真空)\n- 环境属性( 温度、 湿度)\n- QR码登录流程\n- 改进的错误处理\n- 迁移到外部 i18n 文件和 Node.js 20+"
+            },
+            "0.2.2": {
+                "en": "Minor improvments with device handling",
+                "de": "Verbesserung bei der Geräteerkennung",
+                "ru": "Незначительные улучшения в работе с устройствами.",
+                "pt": "Pequenas melhorias no manuseio do dispositivo",
+                "nl": "Kleine verbeteringen in de omgang met apparaten",
+                "fr": "Améliorations mineures de la gestion des appareils",
+                "it": "Piccoli miglioramenti nella gestione del dispositivo",
+                "es": "Mejoras menores en el manejo del dispositivo.",
+                "pl": "Drobne ulepszenia w obsłudze urządzenia",
+                "uk": "Незначні покращення в роботі з пристроєм",
+                "zh-cn": "设备处理方面的微小改进"
+            },
+            "0.2.1": {
+                "en": "Fix login. Check Log after starting Adapter",
+                "de": "Login Problem behoben. Bitte überprüfe den Log nach dem Starten des Adapters",
+                "ru": "Исправьте вход. Проверьте журнал после запуска адаптера",
+                "pt": "Corrija o login. Verifique o log após iniciar o adaptador",
+                "nl": "Inloggen repareren. Controleer Log na het starten van Adapter",
+                "fr": "Correction de la connexion. Vérifier le journal après le démarrage de l'adaptateur",
+                "it": "Correggi l'accesso. Controllare il registro dopo aver avviato l'adattatore",
+                "es": "Arreglar el inicio de sesión. Verificar registro después de iniciar el adaptador",
+                "pl": "Napraw logowanie. Sprawdź dziennik po uruchomieniu adaptera",
+                "uk": "Виправте логін. Перевірте журнал після запуску адаптера",
+                "zh-cn": "修复登录问题。启动Adapter后查看Log"
+            },
+            "0.1.1": {
+                "en": "Bugfixes",
+                "de": "Fehlerbehebungen",
+                "ru": "Исправления ошибок",
+                "pt": "Correções de bugs",
+                "nl": "Oplossingen voor fouten",
+                "fr": "Corrections de bugs",
+                "it": "Correzioni di bug",
+                "es": "Correcciones de errores",
+                "pl": "Poprawki błędów",
+                "uk": "Виправлення помилок",
+                "zh-cn": "错误修正"
+            }
+        },
+        "titleLang": {
+            "en": "MiHome Cloud",
+            "de": "MiHome-Cloud",
+            "ru": "Ми Домашнее Облако",
+            "pt": "MiHome Cloud",
+            "nl": "MiHome Cloud",
+            "fr": "Mi Maison Cloud",
+            "it": "La mia nuvola domestica",
+            "es": "Mi hogar en la nube",
+            "pl": "Chmura domowa Mi",
+            "zh-cn": "米家云",
+            "uk": "Хмара MiHome"
+        },
+        "desc": {
+            "en": "Adapter for all MiHome Cloud devices",
+            "de": "Adapter für alle MiHome Cloud-Geräte",
+            "ru": "Адаптер для устройств MiHome Cloud",
+            "pt": "Adaptador para dispositivos MiHome Cloud",
+            "nl": "Adapter voor MiHome Cloud-apparaten",
+            "fr": "Adaptateur pour appareils MiHome Cloud",
+            "it": "Adattatore per dispositivi MiHome Cloud",
+            "es": "Adaptador para dispositivos MiHome Cloud",
+            "pl": "Adapter do urządzeń MiHome Cloud",
+            "zh-cn": "小米家庭云设备适配器",
+            "uk": "Адаптер для всіх пристроїв MiHome Cloud"
+        },
+        "authors": ["TA2k <tombox2020@gmail.com>"],
+        "keywords": ["MiHome", "Cloud"],
+        "licenseInformation": {
+            "type": "free",
+            "license": "MIT"
+        },
+        "platform": "Javascript/Node.js",
+        "icon": "mihome-cloud.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.mihome-cloud/main/admin/mihome-cloud.png",
+        "readme": "https://github.com/TA2k/ioBroker.mihome-cloud/blob/main/README.md",
+        "loglevel": "info",
+        "tier": 2,
+        "mode": "daemon",
+        "type": "iot-systems",
+        "compact": true,
+        "connectionType": "cloud",
+        "dataSource": "poll",
+        "adminUI": {
+            "config": "json"
+        },
+        "plugins": {
+            "sentry": {
+                "dsn": "https://31d4f96f512f4fd4b035e864822d3595@sentry.iobroker.net/216"
+            }
+        },
+        "dependencies": [
+            {
+                "js-controller": ">=6.0.11"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=7.6.20"
+            }
+        ]
     },
-    "titleLang": {
-      "en": "MiHome Cloud",
-      "de": "MiHome-Cloud",
-      "ru": "Ми Домашнее Облако",
-      "pt": "MiHome Cloud",
-      "nl": "MiHome Cloud",
-      "fr": "Mi Maison Cloud",
-      "it": "La mia nuvola domestica",
-      "es": "Mi hogar en la nube",
-      "pl": "Chmura domowa Mi",
-      "zh-cn": "米家云",
-      "uk": "Хмара MiHome"
+    "encryptedNative": [],
+    "protectedNative": [],
+    "native": {
+        "region": "de",
+        "interval": 10,
+        "disableRuntimeLoginAttempts": false
     },
-    "desc": {
-      "en": "Adapter for all MiHome Cloud devices",
-      "de": "Adapter für alle MiHome Cloud-Geräte",
-      "ru": "Адаптер для устройств MiHome Cloud",
-      "pt": "Adaptador para dispositivos MiHome Cloud",
-      "nl": "Adapter voor MiHome Cloud-apparaten",
-      "fr": "Adaptateur pour appareils MiHome Cloud",
-      "it": "Adattatore per dispositivi MiHome Cloud",
-      "es": "Adaptador para dispositivos MiHome Cloud",
-      "pl": "Adapter do urządzeń MiHome Cloud",
-      "zh-cn": "小米家庭云设备适配器",
-      "uk": "Адаптер для всіх пристроїв MiHome Cloud"
-    },
-    "authors": [
-      "TA2k <tombox2020@gmail.com>"
-    ],
-    "keywords": [
-      "MiHome",
-      "Cloud"
-    ],
-    "licenseInformation": {
-      "type": "free",
-      "license": "MIT"
-    },
-    "platform": "Javascript/Node.js",
-    "icon": "mihome-cloud.png",
-    "enabled": true,
-    "extIcon": "https://raw.githubusercontent.com/TA2k/ioBroker.mihome-cloud/main/admin/mihome-cloud.png",
-    "readme": "https://github.com/TA2k/ioBroker.mihome-cloud/blob/main/README.md",
-    "loglevel": "info",
-    "tier": 2,
-    "mode": "daemon",
-    "type": "iot-systems",
-    "compact": true,
-    "connectionType": "cloud",
-    "dataSource": "poll",
-    "adminUI": {
-      "config": "json"
-    },
-    "plugins": {
-      "sentry": {
-        "dsn": "https://31d4f96f512f4fd4b035e864822d3595@sentry.iobroker.net/216"
-      }
-    },
-    "dependencies": [
-      {
-        "js-controller": ">=6.0.11"
-      }
-    ],
-    "globalDependencies": [
-      {
-        "admin": ">=7.6.20"
-      }
+    "objects": [],
+    "instanceObjects": [
+        {
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device or service connected",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
     ]
-  },
-  "encryptedNative": [],
-  "protectedNative": [],
-  "native": {
-    "region": "de",
-    "interval": 10,
-    "disableRuntimeLoginAttempts": false
-  },
-  "objects": [],
-  "instanceObjects": [
-    {
-      "_id": "info",
-      "type": "channel",
-      "common": {
-        "name": "Information"
-      },
-      "native": {}
-    },
-    {
-      "_id": "info.connection",
-      "type": "state",
-      "common": {
-        "role": "indicator.connected",
-        "name": "Device or service connected",
-        "type": "boolean",
-        "read": true,
-        "write": false,
-        "def": false
-      },
-      "native": {}
-    }
-  ]
 }
