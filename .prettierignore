@@ -1,0 +1,10 @@
+# The files under .github/ are generated and maintained by the ioBroker bot templates.
+# They use their own style (2-space indentation, double quotes) which does not match the
+# @iobroker/eslint-config Prettier configuration. Ignoring them stops Prettier from
+# rewriting them on save, which otherwise produced formatting-only merge noise on every
+# template update.
+#
+# Remove the matching entries once the ioBroker templates follow the ESLint config style.
+.github/**/*.yml
+.github/**/*.yaml
+.github/**/*.md
