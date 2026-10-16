@@ -97,10 +97,8 @@ class MihomeCloud extends utils.Adapter {
             this.config.interval = MAX_INTERVAL_MINS;
         }
 
-        this.disableRuntimeLoginAttempts =
-            this.config.disableRuntimeLoginAttempts === true ||
-            this.config.disableRuntimeLoginAttempts === 'true' ||
-            this.config.disableRuntimeLoginAttempts === 1;
+        // The stored value can be a boolean, a string or a number depending on how it was configured
+        this.disableRuntimeLoginAttempts = [true, 'true', 1].includes(this.config.disableRuntimeLoginAttempts);
         this.header = {
             'miot-encrypt-algorithm': 'ENCRYPT-RC4',
             'content-type': 'application/x-www-form-urlencoded',
@@ -659,7 +657,7 @@ class MihomeCloud extends utils.Adapter {
                     this.log.error(`Long polling error: ${error.message}`);
                     this.log.debug(`Error details: ${JSON.stringify(error)}`);
                     // Don't fail immediately on network errors, keep trying
-                    await new Promise(resolve => this.setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                    await new Promise(resolve => this.setTimeout(() => resolve(undefined), 2000)); // Wait 2 seconds before retry
                     continue;
                 }
             }
@@ -2727,21 +2725,22 @@ class MihomeCloud extends utils.Adapter {
                     } else if (stateObject && stateObject.native.aiid) {
                         // It's an action
                         url = '/v2/miotspec/action'; // v2 API
-                        data = {
-                            params: {
-                                did: deviceId,
-                                siid: stateObject.native.siid,
-                                aiid: stateObject.native.aiid,
-                            },
+                        // eslint-disable-next-line jsdoc/check-tag-names
+                        /** @type {Record<string, unknown>} */
+                        const actionParams = {
+                            did: deviceId,
+                            siid: stateObject.native.siid,
+                            aiid: stateObject.native.aiid,
                         };
                         if (typeof state.val !== 'boolean') {
                             try {
-                                data.params['in'] = JSON.parse(String(state.val));
+                                actionParams.in = JSON.parse(String(state.val));
                             } catch (error) {
                                 this.log.error(error);
                                 return;
                             }
                         }
+                        data = { params: actionParams };
                     }
                 }
                 try {
